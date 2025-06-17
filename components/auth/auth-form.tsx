@@ -113,7 +113,10 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
             <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">{message}</div>
           )}
 
-          <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+          {/* FIXME: Need to set things up to get google to work
+            https://supabase.com/dashboard/project/hqqznfgdpnysyjudjmgg/auth/providers?provider=Google
+            https://supabase.com/docs/guides/auth/social-login/auth-google */}
+          {/* <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -146,7 +149,7 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-2 text-gray-500">Or continue with</span>
             </div>
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
