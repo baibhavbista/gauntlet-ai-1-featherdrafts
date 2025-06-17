@@ -518,6 +518,8 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
 
   const applySuggestion = useCallback(
     (suggestionId: string, replacement: string) => {
+      // FIXME:if replacement begins with [, then it's a special case. Use AI for this
+
       const suggestion = editorState.suggestions.find((s) => s.id === suggestionId)
       if (!suggestion) return
 

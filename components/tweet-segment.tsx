@@ -187,14 +187,18 @@ export function TweetSegmentComponent({
                             key={index}
                             variant="outline"
                             size="sm"
+                            disabled={replacement.startsWith("[")}
                             className="h-7 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
                             onClick={() => onSuggestionApply(suggestion.id, replacement)}
                           >
+
                             {replacement === ""
                               ? "Remove"
                               : replacement === "[consider rephrasing]"
-                                ? "Rephrase"
-                                : replacement}
+                                ? "Rephrase (AI not available yet)"
+                                : replacement === "[consider revising]"
+                                  ? "Revise (AI not available yet)"
+                                  : replacement}
                           </Button>
                         ))}
                       </div>
