@@ -54,7 +54,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
   const [newThreadDescription, setNewThreadDescription] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "archived" | "published">("all")
+  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "archived" | "published">("draft")
 
   useEffect(() => {
     if (user) {
