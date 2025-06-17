@@ -67,6 +67,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
 
   // Load thread data if threadId is provided
   useEffect(() => {
+    // console.log("useEffect: threadId", threadId)
     if (threadId) {
       loadThread(threadId)
     } else {
@@ -89,6 +90,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
   }, [threadId])
 
   const loadThread = async (id: string) => {
+    console.log("loadThread", id)
     setIsLoadingThread(true)
     try {
       const thread = await getThread(id)
@@ -111,14 +113,20 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
     }
   }
 
+  useEffect(() => {
+    console.log("useEffect: isLoadingThread", isLoadingThread)
+    if (!isLoadingThread) {
+      // Give a small delay to ensure UI is ready
+      //  hack: cursor broke this twice!
+      setTimeout(() => {
+        runAllChecks(editorState.segments)
+      }, 100)
+    }
+  }, [isLoadingThread])
+
   // Auto-save functionality
   const debouncedSave = useDebounce(async (segments: TweetSegment[], title: string) => {
-
-
-    console.log("debouncedSav 0e")
     if (!user) return
-
-    console.log("debouncedSave")
 
     setIsSaving(true)
 
@@ -140,20 +148,31 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
         setCurrentThread({ ...threadToUpdate, title })
       }
 
-      // Update segments
-      for (const segment of segments) {
+      // Update segments and track changes
+      const updatedSegments = [...segments]
+      let hasChanges = false
+
+      for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i]
         if (segment.id.startsWith("temp-")) {
-          // Create new segment
-          await createSegment(threadToUpdate.id, segment.content, segment.index)
+          // Create new segment and get the real ID
+          const newSegment = await createSegment(threadToUpdate.id, segment.content, segment.index)
+          if (newSegment) {
+            updatedSegments[i] = newSegment
+            hasChanges = true
+          }
         } else {
           // Update existing segment
           await updateSegment(segment.id, segment.content)
         }
       }
 
-      // Reload thread to get updated data with real IDs
-      if (threadToUpdate) {
-        await loadThread(threadToUpdate.id)
+      // Update the editor state with real IDs if we have changes
+      if (hasChanges) {
+        setEditorState((prev) => ({
+          ...prev,
+          segments: updatedSegments,
+        }))
       }
 
       setLastSaved(new Date())
@@ -161,6 +180,60 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
       console.error("Auto-save failed:", error)
     } finally {
       setIsSaving(false)
+    }
+  }, 2000)
+
+  // Save only a single segment (much more efficient)
+  const debouncedSaveSingle = useDebounce(async (segmentId: string, content: string, threadTitle: string) => {
+    if (!user) return
+
+    console.log("debouncedSaveSingle", segmentId, content.substring(0, 20) + "...")
+
+    try {
+      let threadToUpdate = currentThread
+
+      // Create thread if it doesn't exist
+      if (!threadToUpdate) {
+        const newThread = await createThread(threadTitle || "Untitled Thread")
+        if (newThread) {
+          threadToUpdate = { ...newThread, segments: [] }
+          setCurrentThread(threadToUpdate)
+        } else {
+          return
+        }
+      }
+
+      // Update title if changed
+      if (threadToUpdate.title !== threadTitle) {
+        await updateThread(threadToUpdate.id, { title: threadTitle })
+        setCurrentThread({ ...threadToUpdate, title: threadTitle })
+      }
+
+      // Save only the specific segment
+      if (segmentId.startsWith("temp-")) {
+        // Find the segment to get its index
+        const segment = editorState.segments.find(s => s.id === segmentId)
+        if (segment) {
+          // Create new segment and get the real ID
+          const newSegment = await createSegment(threadToUpdate.id, content, segment.index)
+          if (newSegment) {
+            // Update the editor state with the real ID
+            setEditorState((prev) => ({
+              ...prev,
+              segments: prev.segments.map(s => 
+                s.id === segmentId ? newSegment : s
+              ),
+            }))
+          }
+        }
+      } else {
+        // Update existing segment
+        await updateSegment(segmentId, content)
+      }
+
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error("Single segment save failed:", error)
     }
   }, 2000)
 
@@ -191,6 +264,9 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
 
   const runAllChecks = useCallback(
     async (segments: TweetSegment[]) => {
+
+      console.log("runAllChecks", segments)
+
       if (spellCheckAbortController.current) {
         spellCheckAbortController.current.abort()
       }
@@ -235,7 +311,54 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
     [dictionaryStatus.isInitialized],
   )
 
+  // Check only a single segment (much more efficient)
+  const runSingleSegmentCheck = useCallback(
+    async (segment: TweetSegment) => {
+
+      if (spellCheckAbortController.current) {
+        spellCheckAbortController.current.abort()
+      }
+
+      spellCheckAbortController.current = new AbortController()
+      const currentController = spellCheckAbortController.current
+
+      setIsSpellCheckLoading(true)
+
+      try {
+        const [spellingSuggestions, grammarSuggestions] = await Promise.all([
+          dictionaryStatus.isInitialized ? checkSpelling(segment.content, segment.id) : Promise.resolve([]),
+          checkGrammar(segment.content, segment.id),
+        ])
+
+        if (currentController.signal.aborted) {
+          return
+        }
+
+        const newSuggestions = [...spellingSuggestions, ...grammarSuggestions]
+
+        // Update suggestions by removing old ones for this segment and adding new ones
+        setEditorState((prev) => ({
+          ...prev,
+          suggestions: [
+            ...prev.suggestions.filter(s => s.segmentId !== segment.id),
+            ...newSuggestions
+          ],
+        }))
+      } catch (error) {
+        if (!currentController.signal.aborted) {
+          console.error("Single segment check error:", error)
+        }
+      } finally {
+        if (!currentController.signal.aborted) {
+          setIsSpellCheckLoading(false)
+        }
+      }
+    },
+    [dictionaryStatus.isInitialized],
+  )
+
   const debouncedCheck = useDebounce(runAllChecks, 800)
+  const debouncedSingleCheck = useDebounce(runSingleSegmentCheck, 800)
 
   const updateSegmentContent = useCallback(
     (id: string, content: string) => {
@@ -244,17 +367,21 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
         segment.id === id ? { ...segment, content, charCount: countCharacters(content) } : segment,
       )
 
-      console.log("updateSegmentContent", id, ":", content, ":", newSegments)
+      console.log("updateSegmentContent", id, ":", content.substring(0, 20) + "...")
 
       setEditorState((prev) => ({
         ...prev,
         segments: newSegments,
       }))
 
-      debouncedCheck(newSegments)
-      debouncedSave(newSegments, threadTitle)
+      // Only check and save the specific segment that changed (much more efficient!)
+      const changedSegment = newSegments.find(s => s.id === id)
+      if (changedSegment) {
+        debouncedSingleCheck(changedSegment)
+        debouncedSaveSingle(id, content, threadTitle)
+      }
     },
-    [editorState.segments, debouncedCheck, debouncedSave, threadTitle],
+    [editorState.segments, debouncedSingleCheck, debouncedSaveSingle, threadTitle],
   )
 
   // Add immediate save function
@@ -283,20 +410,31 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
           setCurrentThread({ ...threadToUpdate, title })
         }
 
-        // Update segments
-        for (const segment of segments) {
+        // Update segments and track changes
+        const updatedSegments = [...segments]
+        let hasChanges = false
+
+        for (let i = 0; i < segments.length; i++) {
+          const segment = segments[i]
           if (segment.id.startsWith("temp-")) {
-            // Create new segment
-            await createSegment(threadToUpdate.id, segment.content, segment.index)
+            // Create new segment and get the real ID
+            const newSegment = await createSegment(threadToUpdate.id, segment.content, segment.index)
+            if (newSegment) {
+              updatedSegments[i] = newSegment
+              hasChanges = true
+            }
           } else {
             // Update existing segment
             await updateSegment(segment.id, segment.content)
           }
         }
 
-        // Reload thread to get updated data with real IDs
-        if (threadToUpdate) {
-          await loadThread(threadToUpdate.id)
+        // Update the editor state with real IDs if we have changes
+        if (hasChanges) {
+          setEditorState((prev) => ({
+            ...prev,
+            segments: updatedSegments,
+          }))
         }
 
         setLastSaved(new Date())
@@ -434,8 +572,10 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
       }
       ;(debouncedCheck as any).cancel?.()
       ;(debouncedSave as any).cancel?.()
+      ;(debouncedSingleCheck as any).cancel?.()
+      ;(debouncedSaveSingle as any).cancel?.()
     }
-  }, [debouncedCheck, debouncedSave])
+  }, [debouncedCheck, debouncedSave, debouncedSingleCheck, debouncedSaveSingle])
 
   const totalCharacters = editorState.segments.reduce((sum, segment) => sum + segment.charCount, 0)
   const spellingSuggestions = editorState.suggestions.filter((s) => s.type === "spelling")
@@ -463,16 +603,32 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
         }
       }
 
-      // Save all segments first
-      const segmentPromises = editorState.segments.map(async (segment) => {
-        if (segment.id.startsWith("temp-")) {
-          return await createSegment(threadToUpdate.id, segment.content, segment.index)
-        } else {
-          return await updateSegment(segment.id, segment.content)
-        }
-      })
+      // Save all segments first and track changes
+      const updatedSegments = [...editorState.segments]
+      let hasChanges = false
 
-      await Promise.all(segmentPromises)
+      for (let i = 0; i < editorState.segments.length; i++) {
+        const segment = editorState.segments[i]
+        if (segment.id.startsWith("temp-")) {
+          // Create new segment and get the real ID
+          const newSegment = await createSegment(threadToUpdate.id, segment.content, segment.index)
+          if (newSegment) {
+            updatedSegments[i] = newSegment
+            hasChanges = true
+          }
+        } else {
+          // Update existing segment
+          await updateSegment(segment.id, segment.content)
+        }
+      }
+
+      // Update the editor state with real IDs if we have changes
+      if (hasChanges) {
+        setEditorState((prev) => ({
+          ...prev,
+          segments: updatedSegments,
+        }))
+      }
 
       // Update status
       const updateData: any = {
@@ -591,16 +747,15 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
             </div>
           </div>
 
-        {lastSaved && !isSaving && (
-              <span className="text-gray-400 text-xs">Auto-saved {lastSaved.toLocaleTimeString()}</span>
-            )}
-
 
           <div className="flex items-center gap-2">
             {lastSaved && !isSaving && (
               <span className="text-gray-400 text-xs">Auto-saved {lastSaved.toLocaleTimeString()}</span>
             )}
-            {totalSuggestions > 0 && (
+            {isSaving && (
+              <span className="text-gray-400 text-xs">Saving ...</span>
+            )}
+            {/* {totalSuggestions > 0 && (
               <Button
                 variant="outline"
                 onClick={fixAllSuggestions}
@@ -614,7 +769,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
                 )}
                 Fix All ({totalSuggestions})
               </Button>
-            )}
+            )} */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -660,11 +815,6 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
             characters total
           </span>
 
-          {isSaving && <span className="text-blue-600">• Saving...</span>}
-          {lastSaved && !isSaving && (
-              <span className="text-gray-400 text-xs">Auto-saved {lastSaved.toLocaleTimeString()}</span>
-            )}
-
           {dictionaryStatus.isLoading && (
             <div className="flex items-center gap-1 text-blue-600">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -679,7 +829,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
             </div>
           )}
 
-          {dictionaryStatus.isInitialized && !isSpellCheckLoading && (
+          {/* {dictionaryStatus.isInitialized && !isSpellCheckLoading && (
             <div className="flex items-center gap-1 text-green-600">
               <span className="text-xs">✓ Grammar & spell check ready</span>
             </div>
@@ -690,7 +840,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
               <Loader2 className="h-3 w-3 animate-spin" />
               <span className="text-xs">Checking writing...</span>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 

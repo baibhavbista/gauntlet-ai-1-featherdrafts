@@ -142,6 +142,9 @@ export function TweetSegmentComponent({
                   <span className="font-medium text-red-700">"{suggestion.word}"</span>
                   <span className="text-gray-400">→</span>
                   <div className="flex gap-1 flex-wrap">
+                    {suggestion.suggestions.length === 0 && (
+                      <span className="text-gray-400">Unknown</span>
+                    )}
                     {suggestion.suggestions.map((replacement, index) => (
                       <Button
                         key={index}

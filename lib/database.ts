@@ -170,7 +170,7 @@ export async function deleteThread(threadId: string): Promise<boolean> {
 }
 
 // Segment operations
-export async function createSegment(threadId: string, content: string, index: number): Promise<boolean> {
+export async function createSegment(threadId: string, content: string, index: number): Promise<TweetSegment | null> {
   // Get the current user to verify thread ownership
   const {
     data: { user },
@@ -179,7 +179,7 @@ export async function createSegment(threadId: string, content: string, index: nu
 
   if (userError || !user) {
     console.error("User not authenticated:", userError)
-    return false
+    return null
   }
 
   // Verify the user owns the thread
@@ -192,22 +192,30 @@ export async function createSegment(threadId: string, content: string, index: nu
 
   if (threadError || !thread) {
     console.error("Thread not found or user doesn't own it:", threadError)
-    return false
+    return null
   }
 
-  const { error } = await supabase.from("tweet_segments").insert({
+  const { data, error } = await supabase.from("tweet_segments").insert({
     thread_id: threadId,
     content,
     char_count: content.length,
     segment_index: index,
   })
+  .select()
+  .single()
 
   if (error) {
     console.error("Error creating segment:", error)
-    return false
+    return null
   }
 
-  return true
+  // Convert database segment to our TweetSegment format
+  return {
+    id: data.id,
+    content: data.content,
+    charCount: data.char_count,
+    index: data.segment_index,
+  }
 }
 
 export async function updateSegment(segmentId: string, content: string): Promise<boolean> {

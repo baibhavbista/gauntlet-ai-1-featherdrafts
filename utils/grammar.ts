@@ -128,9 +128,6 @@ export async function checkGrammar(text: string, segmentId: string): Promise<Gra
       return []
     }
 
-    console.log("test", writeGood);
-    console.log("test2", writeGood("test"));
-
     // Use write-good to analyze the text
     const suggestions = writeGood(text.trim(), {
       passive: true,

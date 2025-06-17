@@ -1,8 +1,8 @@
 import nspell from "nspell"
 import type { SpellcheckSuggestion } from "@/types/editor"
 
-const affUrl = "https://cdn.jsdelivr.net/npm/dictionary-en-us@2.0.0/index.aff"
-const dicUrl = "https://cdn.jsdelivr.net/npm/dictionary-en-us@2.0.0/index.dic"
+const affUrl = "https://cdn.jsdelivr.net/npm/dictionary-en@4.0.0/index.aff"
+const dicUrl = "https://cdn.jsdelivr.net/npm/dictionary-en@4.0.0/index.dic"
 
 let spellChecker: any = null
 let isInitialized = false
@@ -116,19 +116,33 @@ function isWordCorrect(word: string): boolean {
 
   if (socialMediaWords.includes(cleanWord.toLowerCase())) return true
 
+  // FIXME: I do not think below is actually working properly because nspell seems to be case sensitive
+
   // Check the word in multiple case variations
   // 1. Check as-is (preserves original case)
-  if (spellChecker.correct(cleanWord)) return true
+  if (spellChecker.correct(cleanWord)) {
+    // console.log("isWordCorrect: correct as-is", cleanWord)
+    return true
+  }
 
   // 2. Check lowercase (for common words)
-  if (spellChecker.correct(cleanWord.toLowerCase())) return true
+  if (spellChecker.correct(cleanWord.toLowerCase())) {
+    // console.log("isWordCorrect: correct lowercase", cleanWord.toLowerCase())
+    return true
+  }
 
   // 3. Check with first letter capitalized (for proper nouns)
   const capitalized = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase()
-  if (spellChecker.correct(capitalized)) return true
+  if (spellChecker.correct(capitalized)) {
+    // console.log("isWordCorrect: correct capitalized", capitalized)
+    return true
+  }
 
   // 4. Check all uppercase (for acronyms)
-  if (spellChecker.correct(cleanWord.toUpperCase())) return true
+  if (spellChecker.correct(cleanWord.toUpperCase())) {
+    // console.log("isWordCorrect: correct uppercase", cleanWord.toUpperCase())
+    return true
+  }
 
   return false
 }
@@ -197,6 +211,16 @@ export async function checkSpelling(text: string, segmentId: string): Promise<Sp
       const wordSuggestions = generateSuggestions(word)
 
       if (wordSuggestions.length > 0) {
+        suggestions.push({
+          id: `spelling-${segmentId}-${start}-${word}`,
+          word: word,
+          suggestions: wordSuggestions,
+          start: start,
+          end: end,
+          segmentId,
+          type: "spelling" as const,
+        })
+      } else {
         suggestions.push({
           id: `spelling-${segmentId}-${start}-${word}`,
           word: word,
