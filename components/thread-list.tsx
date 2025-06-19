@@ -324,7 +324,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
           {!searchQuery && (
             <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
-              Create Your First Thread
+              Create A New Thread
             </Button>
           )}
         </div>
