@@ -333,9 +333,9 @@ export async function saveSuggestion(
   const { error } = await supabase.from("suggestions").insert({
     segment_id: segmentId,
     suggestion_type: suggestion.type,
-    original_text: suggestion.type === "spelling" ? suggestion.word : suggestion.text,
+    original_text: suggestion.type === "spelling" ? (suggestion as any).word : (suggestion as any).text,
     suggested_text: suggestion.suggestions[0] || "",
-    reason: suggestion.type === "grammar" ? suggestion.reason : undefined,
+    reason: suggestion.type === "grammar" ? (suggestion as any).reason : undefined,
     start_position: suggestion.start,
     end_position: suggestion.end,
     is_applied: false,

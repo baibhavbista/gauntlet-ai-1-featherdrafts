@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CharacterCounter } from "./character-counter"
-import type { TweetSegment, Suggestion } from "@/types/editor"
+import type { TweetSegment, Suggestion, SpellcheckSuggestion, GrammarSuggestion } from "@/types/editor"
 import { cn } from "@/lib/utils"
 import { X, Plus, AlertCircle, BookOpen } from "lucide-react"
 
@@ -139,7 +139,7 @@ export function TweetSegmentComponent({
                   key={suggestion.id}
                   className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200"
                 >
-                  <span className="font-medium text-red-700">"{suggestion.word}"</span>
+                  <span className="font-medium text-red-700">"{(suggestion as SpellcheckSuggestion).word}"</span>
                   <span className="text-gray-400">→</span>
                   <div className="flex gap-1 flex-wrap">
                     {suggestion.suggestions.length === 0 && <span className="text-gray-400">Unknown</span>}
@@ -173,8 +173,8 @@ export function TweetSegmentComponent({
                   className="flex flex-col gap-2 text-sm bg-blue-50 p-3 rounded border-l-2 border-blue-200"
                 >
                   <div className="flex items-start gap-2">
-                    <span className="font-medium text-blue-700">"{suggestion.text}"</span>
-                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">{suggestion.reason}</span>
+                    <span className="font-medium text-blue-700">"{(suggestion as GrammarSuggestion).text}"</span>
+                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">{(suggestion as GrammarSuggestion).reason}</span>
                   </div>
                   {suggestion.suggestions.length > 0 && (
                     <div className="flex items-center gap-2">
