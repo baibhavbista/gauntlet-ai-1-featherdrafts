@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter, useParams, usePathname } from "next/navigation"
+import { useRouter, useParams, usePathname, useSearchParams } from "next/navigation"
 import { ThreadDetail } from "@/components/thread-detail"
 import { useAuth } from "@/store"
 import { PageLoading } from "@/components/ui/loading-spinner"
@@ -12,7 +12,9 @@ export default function ThreadDetailPage() {
   const router = useRouter()
   const params = useParams()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const threadId = params.threadId as string
+  const isAiGenerated = searchParams.get('ai') === 'success'
 
   // Validate threadId format (UUID)
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function ThreadDetailPage() {
     <main className="min-h-screen bg-gray-50">
       <ThreadDetail 
         threadId={threadId}
+        isAiGenerated={isAiGenerated}
         onBackToThreads={() => router.push('/threads')}
       />
     </main>

@@ -218,6 +218,58 @@ export async function createSegment(threadId: string, content: string, index: nu
   }
 }
 
+export async function createBulkSegments(threadId: string, segments: { content: string; index: number }[]): Promise<TweetSegment[]> {
+  // Get the current user to verify thread ownership
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("User not authenticated:", userError)
+    return []
+  }
+
+  // Verify the user owns the thread
+  const { data: thread, error: threadError } = await supabase
+    .from("threads")
+    .select("id")
+    .eq("id", threadId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (threadError || !thread) {
+    console.error("Thread not found or user doesn't own it:", threadError)
+    return []
+  }
+
+  // Prepare bulk insert data
+  const insertData = segments.map(segment => ({
+    thread_id: threadId,
+    content: segment.content,
+    char_count: segment.content.length,
+    segment_index: segment.index,
+  }))
+
+  const { data, error } = await supabase
+    .from("tweet_segments")
+    .insert(insertData)
+    .select()
+
+  if (error) {
+    console.error("Error creating bulk segments:", error)
+    return []
+  }
+
+  // Convert database segments to our TweetSegment format
+  return data.map(segment => ({
+    id: segment.id,
+    content: segment.content,
+    charCount: segment.char_count,
+    index: segment.segment_index,
+  }))
+}
+
 export async function updateSegment(segmentId: string, content: string): Promise<boolean> {
   // Get the current user
   const {

@@ -74,7 +74,7 @@ export interface ThreadsState {
 export interface ThreadsActions {
   // CRUD operations
   loadThreads: () => Promise<void>
-  createThread: (title: string, description?: string) => Promise<Thread | null>
+  createThread: (title: string, description?: string, longText?: string, targetTweetCount?: number) => Promise<Thread | null>
   loadThread: (threadId: string) => Promise<ThreadWithSegments | null>
   updateThread: (threadId: string, updates: Partial<Thread>) => Promise<boolean>
   deleteThread: (threadId: string) => Promise<boolean>

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Slider } from "@/components/ui/slider"
 import { PageLoading } from "@/components/ui/loading-spinner"
 import {
   Plus,
@@ -34,10 +35,13 @@ import {
   Archive,
   ArchiveRestore,
   CheckCircle,
+  Sparkles,
+  Type,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useAuth, useThreads } from "@/store"
 import { ThreadFilter } from "./thread-filter"
+import { estimateTweetCount } from "@/lib/ai"
 
 interface ThreadListProps {
   onSelectThread: (threadId: string) => void
@@ -68,7 +72,11 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [newThreadTitle, setNewThreadTitle] = useState("")
-  const [newThreadDescription, setNewThreadDescription] = useState("")
+  const [isAiSplitMode, setIsAiSplitMode] = useState(false)
+  const [longText, setLongText] = useState("")
+  const [tweetCount, setTweetCount] = useState([5]) // Slider component expects array
+
+  const estimatedTweets = estimateTweetCount(longText)
 
   useEffect(() => {
     if (user) {
@@ -78,20 +86,31 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
 
   const handleCreateThread = async () => {
     if (!newThreadTitle.trim() || !user) return
+    if (isAiSplitMode && !longText.trim()) return
 
-    const thread = await createThread(newThreadTitle.trim(), newThreadDescription.trim() || undefined)
+    const thread = await createThread(
+      newThreadTitle.trim(), 
+      undefined, // No description field anymore
+      isAiSplitMode ? longText.trim() : undefined,
+      isAiSplitMode ? tweetCount[0] : undefined
+    )
 
     if (thread) {
       setIsCreateDialogOpen(false)
       setNewThreadTitle("")
-      setNewThreadDescription("")
-      onSelectThread(thread.id)
+      setIsAiSplitMode(false)
+      setLongText("")
+      setTweetCount([5])
+      // Add AI success parameter when AI was used
+      const threadUrl = isAiSplitMode ? `${thread.id}?ai=success` : thread.id
+      onSelectThread(threadUrl)
     }
     // Error handling is done in the store
   }
 
   const handleDeleteThread = async (threadId: string) => {
     if (!user) return
+    // console.log('Deleting thread:', threadId)
     await deleteThread(threadId)
     // Error handling is done in the store
   }
@@ -212,11 +231,14 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
                 New Thread
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create New Thread</DialogTitle>
                 <DialogDescription>
-                  Start a new Twitter thread. You can always edit the title and description later.
+                  {isAiSplitMode 
+                    ? "Paste your long-form content and AI will split it into tweet-sized segments."
+                    : "Start a new Twitter thread. You can always edit the title and description later."
+                  }
                 </DialogDescription>
               </DialogHeader>
               {error && (
@@ -232,23 +254,104 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
                     onChange={(e) => setNewThreadTitle(e.target.value)}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="description">Description (optional)</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Brief description of your thread..."
-                    value={newThreadDescription}
-                    onChange={(e) => setNewThreadDescription(e.target.value)}
-                    rows={3}
-                  />
+
+                {/* AI Split Toggle */}
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <Label className="text-sm font-medium">AI Thread Splitting</Label>
+                      <p className="text-xs text-gray-600">Let AI convert long text into tweet threads</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={isAiSplitMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsAiSplitMode(!isAiSplitMode)}
+                    className={isAiSplitMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    {isAiSplitMode ? "ON" : "OFF"}
+                  </Button>
                 </div>
+
+                {isAiSplitMode && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="longText" className="flex items-center gap-2 mb-2">
+                        <Type className="h-4 w-4" />
+                        Long-form Content
+                      </Label>
+                      <Textarea
+                        id="longText"
+                        placeholder="Paste your long-form content here. AI will intelligently split it into tweet-sized segments while maintaining context and flow..."
+                        value={longText}
+                        onChange={(e) => setLongText(e.target.value)}
+                        rows={8}
+                        className="resize-none"
+                      />
+                    </div>
+                    
+                    {/* Tweet Count Slider */}
+                    <div>
+                      <Label className="flex items-center gap-2 mb-3">
+                        <MessageSquare className="h-4 w-4" />
+                        Target Tweet Count: <span className="font-medium text-blue-600">{tweetCount[0]} tweets</span>
+                      </Label>
+                      <div className="px-3">
+                        <Slider
+                          value={tweetCount}
+                          onValueChange={setTweetCount}
+                          max={10}
+                          min={3}
+                          step={1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>3</span>
+                          <span>10</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={isCreating}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsCreateDialogOpen(false)
+                    setNewThreadTitle("")
+                    setIsAiSplitMode(false)
+                    setLongText("")
+                    setTweetCount([5])
+                  }} 
+                  disabled={isCreating}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateThread} disabled={!newThreadTitle.trim() || isCreating}>
-                  {isCreating ? "Creating..." : "Create Thread"}
+                <Button 
+                  onClick={handleCreateThread} 
+                  disabled={
+                    !newThreadTitle.trim() || 
+                    (isAiSplitMode && !longText.trim()) || 
+                    isCreating
+                  }
+                  className={isAiSplitMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  {isCreating ? (
+                    isAiSplitMode ? (
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 animate-spin" />
+                        AI Processing...
+                      </div>
+                    ) : "Creating..."
+                  ) : isAiSplitMode ? (
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Create with AI
+                    </div>
+                  ) : "Create Thread"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -316,7 +419,10 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                    }}>
                       <DropdownMenuItem onClick={() => onSelectThread(thread.id)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit

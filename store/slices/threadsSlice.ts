@@ -2,6 +2,8 @@ import type { StateCreator } from 'zustand'
 import type { AppStore, ThreadsSlice } from '@/types/store'
 import type { TweetSegment } from '@/types/editor'
 import { supabase } from '@/lib/supabase'
+import { splitTextToThreads } from '@/lib/ai'
+import { createBulkSegments } from '@/lib/database'
 
 export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = (set, get) => ({
   // State
@@ -113,7 +115,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     }
   },
 
-  createThread: async (title: string, description?: string) => {
+  createThread: async (title: string, description?: string, longText?: string, targetTweetCount?: number) => {
     const { user } = get()
     if (!user) {
       set({ error: 'User not authenticated' })
@@ -123,7 +125,8 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     set({ isCreating: true, error: null })
 
     try {
-      const { data, error } = await supabase
+      // First create the thread
+      const { data: thread, error: threadError } = await supabase
         .from('threads')
         .insert({
           title: title.trim(),
@@ -134,16 +137,64 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
         .select()
         .single()
 
-      if (error) throw error
+      if (threadError) throw threadError
+
+      // If longText is provided, split it into segments using AI
+      if (longText?.trim()) {
+        const aiResponse = await splitTextToThreads({
+          text: longText.trim(),
+          title: title.trim(),
+          tone: 'informative', // Default tone, could be made configurable
+          targetTweetCount: targetTweetCount || 5, // Use provided count or default to 5
+        })
+
+        if (!aiResponse.success || !aiResponse.data) {
+          // If AI fails, still return the thread but show error
+          console.error('AI splitting failed:', aiResponse.error)
+          set({ 
+            error: `Thread created, but AI splitting failed: ${aiResponse.error}. You can manually add content.`,
+            isCreating: false 
+          })
+        } else {
+          // Create segments from AI response
+          const segmentsToCreate = aiResponse.data.segments.map(segment => ({
+            content: segment.content,
+            index: segment.order - 1, // Convert 1-based to 0-based indexing
+          }))
+
+          const createdSegments = await createBulkSegments(thread.id, segmentsToCreate)
+          
+          if (createdSegments.length === 0) {
+            set({ 
+              error: 'Thread created, but failed to create segments. You can manually add content.',
+              isCreating: false 
+            })
+          }
+
+          // Update thread stats
+          const totalCharacters = createdSegments.reduce((sum, seg) => sum + seg.charCount, 0)
+          await supabase
+            .from('threads')
+            .update({
+              total_characters: totalCharacters,
+              total_tweets: createdSegments.length,
+            })
+            .eq('id', thread.id)
+
+          // Update local thread data
+          thread.total_characters = totalCharacters
+          thread.total_tweets = createdSegments.length
+        }
+      }
 
       // Add to threads list with optimistic update
       const { threads } = get()
       set({ 
-        threads: [data, ...threads],
+        threads: [thread, ...threads],
         isCreating: false 
       })
 
-      return data
+      return thread
     } catch (error) {
       console.error('Failed to create thread:', error)
       set({ 
