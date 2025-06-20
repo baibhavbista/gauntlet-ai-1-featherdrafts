@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { getThreads, createThread, deleteThread, updateThread, type Thread } from "@/lib/database"
 import {
   Plus,
   MoreVertical,
@@ -36,7 +35,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, useThreads } from "@/store"
 import { ThreadFilter } from "./thread-filter"
 
 interface ThreadListProps {
@@ -46,133 +45,104 @@ interface ThreadListProps {
 
 export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
   const { user, signOut } = useAuth()
-  const [threads, setThreads] = useState<Thread[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
+  const {
+    // State
+    threads,
+    isLoading,
+    isCreating,
+    error,
+    searchQuery,
+    statusFilter,
+    // Actions  
+    loadThreads,
+    createThread,
+    deleteThread,
+    updateThread,
+    setSearchQuery,
+    setStatusFilter,
+    clearError,
+    getFilteredThreads,
+    optimisticUpdateThread,
+  } = useThreads()
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [newThreadTitle, setNewThreadTitle] = useState("")
   const [newThreadDescription, setNewThreadDescription] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "archived" | "published">("draft")
 
   useEffect(() => {
     if (user) {
       loadThreads()
     }
-  }, [user])
-
-  const loadThreads = async () => {
-    if (!user) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const fetchedThreads = await getThreads()
-      setThreads(fetchedThreads)
-    } catch (err) {
-      console.error("Failed to load threads:", err)
-      setError("Failed to load threads. Please try again.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [user, loadThreads])
 
   const handleCreateThread = async () => {
     if (!newThreadTitle.trim() || !user) return
 
-    setIsCreating(true)
-    setError(null)
+    const thread = await createThread(newThreadTitle.trim(), newThreadDescription.trim() || undefined)
 
-    try {
-      const thread = await createThread(newThreadTitle.trim(), newThreadDescription.trim() || undefined)
-
-      if (thread) {
-        setThreads([thread, ...threads])
-        setIsCreateDialogOpen(false)
-        setNewThreadTitle("")
-        setNewThreadDescription("")
-        onSelectThread(thread.id)
-      } else {
-        setError("Failed to create thread. Please try again.")
-      }
-    } catch (err) {
-      console.error("Failed to create thread:", err)
-      setError("Failed to create thread. Please try again.")
-    } finally {
-      setIsCreating(false)
+    if (thread) {
+      setIsCreateDialogOpen(false)
+      setNewThreadTitle("")
+      setNewThreadDescription("")
+      onSelectThread(thread.id)
     }
+    // Error handling is done in the store
   }
 
   const handleDeleteThread = async (threadId: string) => {
     if (!user) return
-
-    try {
-      const success = await deleteThread(threadId)
-      if (success) {
-        setThreads(threads.filter((t) => t.id !== threadId))
-      } else {
-        setError("Failed to delete thread. Please try again.")
-      }
-    } catch (err) {
-      console.error("Failed to delete thread:", err)
-      setError("Failed to delete thread. Please try again.")
-    }
+    await deleteThread(threadId)
+    // Error handling is done in the store
   }
 
   const handleArchiveThread = async (threadId: string, shouldArchive: boolean) => {
     if (!user) return
-
-    try {
-      const success = await updateThread(threadId, {
-        status: shouldArchive ? "archived" : "draft",
+    
+    // Optimistic update for better UX
+    optimisticUpdateThread(threadId, {
+      status: shouldArchive ? "archived" : "draft",
+    })
+    
+    // Actual update
+    const success = await updateThread(threadId, {
+      status: shouldArchive ? "archived" : "draft",
+    })
+    
+    // If update failed, revert optimistic update
+    if (!success) {
+      optimisticUpdateThread(threadId, {
+        status: shouldArchive ? "draft" : "archived",
       })
-      if (success) {
-        setThreads(threads.map((t) => (t.id === threadId ? { ...t, status: shouldArchive ? "archived" : "draft" } : t)))
-      } else {
-        setError(`Failed to ${shouldArchive ? "archive" : "unarchive"} thread. Please try again.`)
-      }
-    } catch (err) {
-      console.error(`Failed to ${shouldArchive ? "archive" : "unarchive"} thread:`, err)
-      setError(`Failed to ${shouldArchive ? "archive" : "unarchive"} thread. Please try again.`)
     }
   }
 
   const handlePublishThread = async (threadId: string) => {
     if (!user) return
-
-    try {
-      const success = await updateThread(threadId, {
-        status: "published",
-        published_at: new Date().toISOString(),
+    
+    const publishedAt = new Date().toISOString()
+    
+    // Optimistic update for better UX
+    optimisticUpdateThread(threadId, {
+      status: "published",
+      published_at: publishedAt,
+    })
+    
+    // Actual update
+    const success = await updateThread(threadId, {
+      status: "published",
+      published_at: publishedAt,
+    })
+    
+    // If update failed, revert optimistic update
+    if (!success) {
+      optimisticUpdateThread(threadId, {
+        status: "draft",
+        published_at: undefined,
       })
-      if (success) {
-        setThreads(
-          threads.map((t) =>
-            t.id === threadId ? { ...t, status: "published", published_at: new Date().toISOString() } : t,
-          ),
-        )
-      } else {
-        setError("Failed to mark thread as published. Please try again.")
-      }
-    } catch (err) {
-      console.error("Failed to mark thread as published:", err)
-      setError("Failed to mark thread as published. Please try again.")
     }
   }
 
-  const filteredThreads = threads.filter((thread) => {
-    // Text search filter
-    const matchesSearch =
-      thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      thread.description?.toLowerCase().includes(searchQuery.toLowerCase())
-
-    // Status filter
-    const matchesStatus = activeFilter === "all" || thread.status === activeFilter
-
-    return matchesSearch && matchesStatus
-  })
+  const filteredThreads = getFilteredThreads()
 
   // Calculate counts for filter badges
   const filterCounts = {
@@ -203,7 +173,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
     )
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -293,7 +263,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
       {error && !isCreateDialogOpen && (
         <div className="mb-6 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
           {error}
-          <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-2">
+          <Button variant="ghost" size="sm" onClick={clearError} className="ml-2">
             Dismiss
           </Button>
         </div>
@@ -309,7 +279,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
             className="pl-10"
           />
         </div>
-        <ThreadFilter activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={filterCounts} />
+        <ThreadFilter activeFilter={statusFilter} onFilterChange={setStatusFilter} counts={filterCounts} />
       </div>
 
       {filteredThreads.length === 0 ? (

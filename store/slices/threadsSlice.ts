@@ -1,0 +1,504 @@
+import type { StateCreator } from 'zustand'
+import type { AppStore, ThreadsSlice } from '@/types/store'
+import type { TweetSegment } from '@/types/editor'
+import { supabase } from '@/lib/supabase'
+
+export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = (set, get) => ({
+  // State
+  threads: [],
+  currentThread: null,
+  isLoading: false,
+  isCreating: false,
+  isUpdating: false,
+  isDeleting: false,
+  error: null,
+  lastSaved: null,
+  
+  // Filters and search
+  searchQuery: '',
+  statusFilter: 'draft',
+  sortBy: 'updated_at',
+  sortOrder: 'desc',
+
+  // ====================
+  // THREAD CRUD OPERATIONS
+  // ====================
+
+  loadThreads: async () => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return
+    }
+
+    set({ isLoading: true, error: null })
+
+    try {
+      const { data, error } = await supabase
+        .from('threads')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+
+      set({ 
+        threads: data || [],
+        isLoading: false 
+      })
+    } catch (error) {
+      console.error('Failed to load threads:', error)
+      set({ 
+        error: 'Failed to load threads. Please try again.',
+        isLoading: false 
+      })
+    }
+  },
+
+  loadThread: async (threadId: string) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return null
+    }
+
+    set({ isLoading: true, error: null })
+
+    try {
+      // Load thread details
+      const { data: thread, error: threadError } = await supabase
+        .from('threads')
+        .select('*')
+        .eq('id', threadId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (threadError) throw threadError
+
+      // Load segments
+      const { data: segments, error: segmentsError } = await supabase
+        .from('tweet_segments')
+        .select('*')
+        .eq('thread_id', threadId)
+        .order('segment_index', { ascending: true })
+
+      if (segmentsError) throw segmentsError
+
+      // Format segments
+      const formattedSegments: TweetSegment[] = (segments || []).map(segment => ({
+        id: segment.id,
+        content: segment.content,
+        charCount: segment.char_count,
+        index: segment.segment_index,
+      }))
+
+      const threadWithSegments = {
+        ...thread,
+        segments: formattedSegments,
+      }
+
+      set({ 
+        currentThread: threadWithSegments,
+        isLoading: false 
+      })
+
+      return threadWithSegments
+    } catch (error) {
+      console.error('Failed to load thread:', error)
+      set({ 
+        error: 'Failed to load thread. Please try again.',
+        isLoading: false 
+      })
+      return null
+    }
+  },
+
+  createThread: async (title: string, description?: string) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return null
+    }
+
+    set({ isCreating: true, error: null })
+
+    try {
+      const { data, error } = await supabase
+        .from('threads')
+        .insert({
+          title: title.trim(),
+          description: description?.trim(),
+          status: 'draft',
+          user_id: user.id,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Add to threads list with optimistic update
+      const { threads } = get()
+      set({ 
+        threads: [data, ...threads],
+        isCreating: false 
+      })
+
+      return data
+    } catch (error) {
+      console.error('Failed to create thread:', error)
+      set({ 
+        error: 'Failed to create thread. Please try again.',
+        isCreating: false 
+      })
+      return null
+    }
+  },
+
+  updateThread: async (threadId: string, updates: Partial<any>) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return false
+    }
+
+    set({ isUpdating: true, error: null })
+
+    try {
+      const { error } = await supabase
+        .from('threads')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', threadId)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      // Update in local state with optimistic update
+      const { threads, currentThread } = get()
+      const updatedThreads = threads.map(thread => 
+        thread.id === threadId ? { ...thread, ...updates } : thread
+      )
+      
+      const updatedCurrentThread = currentThread?.id === threadId 
+        ? { ...currentThread, ...updates }
+        : currentThread
+
+      set({ 
+        threads: updatedThreads,
+        currentThread: updatedCurrentThread,
+        lastSaved: new Date(),
+        isUpdating: false 
+      })
+
+      return true
+    } catch (error) {
+      console.error('Failed to update thread:', error)
+      set({ 
+        error: 'Failed to update thread. Please try again.',
+        isUpdating: false 
+      })
+      return false
+    }
+  },
+
+  deleteThread: async (threadId: string) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return false
+    }
+
+    set({ isDeleting: true, error: null })
+
+    try {
+      const { error } = await supabase
+        .from('threads')
+        .delete()
+        .eq('id', threadId)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      // Remove from local state
+      const { threads, currentThread } = get()
+      const updatedThreads = threads.filter(thread => thread.id !== threadId)
+      
+      set({ 
+        threads: updatedThreads,
+        currentThread: currentThread?.id === threadId ? null : currentThread,
+        isDeleting: false 
+      })
+
+      return true
+    } catch (error) {
+      console.error('Failed to delete thread:', error)
+      set({ 
+        error: 'Failed to delete thread. Please try again.',
+        isDeleting: false 
+      })
+      return false
+    }
+  },
+
+  // ====================
+  // SEGMENT CRUD OPERATIONS
+  // ====================
+
+  createSegment: async (threadId: string, content: string, index: number) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return null
+    }
+
+    try {
+      // Verify thread ownership
+      const { data: thread, error: threadError } = await supabase
+        .from('threads')
+        .select('id')
+        .eq('id', threadId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (threadError || !thread) {
+        throw new Error('Thread not found or access denied')
+      }
+
+      const { data, error } = await supabase
+        .from('tweet_segments')
+        .insert({
+          thread_id: threadId,
+          content,
+          segment_index: index,
+          char_count: content.length,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Format for our TweetSegment type
+      const newSegment: TweetSegment = {
+        id: data.id,
+        content: data.content,
+        charCount: data.char_count,
+        index: data.segment_index,
+      }
+
+      // Update current thread if it matches
+      const { currentThread } = get()
+      if (currentThread?.id === threadId) {
+        const updatedSegments = [...(currentThread.segments || []), newSegment]
+          .sort((a, b) => a.index - b.index)
+        
+        set({
+          currentThread: {
+            ...currentThread,
+            segments: updatedSegments,
+          }
+        })
+      }
+
+      return newSegment
+    } catch (error) {
+      console.error('Failed to create segment:', error)
+      set({ error: 'Failed to create segment. Please try again.' })
+      return null
+    }
+  },
+
+  updateSegment: async (segmentId: string, content: string) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return false
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tweet_segments')
+        .update({
+          content,
+          char_count: content.length,
+        })
+        .eq('id', segmentId)
+
+      if (error) throw error
+
+      // Update in current thread if present
+      const { currentThread } = get()
+      if (currentThread?.segments) {
+        const updatedSegments = currentThread.segments.map(segment =>
+          segment.id === segmentId 
+            ? { ...segment, content, charCount: content.length }
+            : segment
+        )
+        
+        set({
+          currentThread: {
+            ...currentThread,
+            segments: updatedSegments,
+          },
+          lastSaved: new Date(),
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to update segment:', error)
+      set({ error: 'Failed to update segment. Please try again.' })
+      return false
+    }
+  },
+
+  deleteSegment: async (segmentId: string) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return false
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tweet_segments')
+        .delete()
+        .eq('id', segmentId)
+
+      if (error) throw error
+
+      // Remove from current thread if present
+      const { currentThread } = get()
+      if (currentThread?.segments) {
+        const updatedSegments = currentThread.segments
+          .filter(segment => segment.id !== segmentId)
+          .map((segment, index) => ({ ...segment, index })) // Re-index
+
+        set({
+          currentThread: {
+            ...currentThread,
+            segments: updatedSegments,
+          }
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to delete segment:', error)
+      set({ error: 'Failed to delete segment. Please try again.' })
+      return false
+    }
+  },
+
+  reorderSegments: async (threadId: string, segments: TweetSegment[]) => {
+    const { user } = get()
+    if (!user) {
+      set({ error: 'User not authenticated' })
+      return false
+    }
+
+    try {
+      // Update all segments with new indices
+      const updates = segments.map(segment => ({
+        id: segment.id,
+        segment_index: segment.index,
+      }))
+
+      // Note: Supabase doesn't support bulk updates, so we'll do individual updates
+      const updatePromises = updates.map(update =>
+        supabase
+          .from('tweet_segments')
+          .update({ segment_index: update.segment_index })
+          .eq('id', update.id)
+      )
+
+      const results = await Promise.all(updatePromises)
+      const hasError = results.some(result => result.error)
+
+      if (hasError) {
+        throw new Error('Some segments failed to reorder')
+      }
+
+      // Update current thread if it matches
+      const { currentThread } = get()
+      if (currentThread?.id === threadId) {
+        set({
+          currentThread: {
+            ...currentThread,
+            segments: segments.sort((a, b) => a.index - b.index),
+          }
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error('Failed to reorder segments:', error)
+      set({ error: 'Failed to reorder segments. Please try again.' })
+      return false
+    }
+  },
+
+  // ====================
+  // UTILITY ACTIONS
+  // ====================
+
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query })
+  },
+
+  setStatusFilter: (filter: 'all' | 'draft' | 'published' | 'archived') => {
+    set({ statusFilter: filter })
+  },
+
+  setSortBy: (sortBy: string) => {
+    set({ sortBy })
+  },
+
+  setSortOrder: (order: 'asc' | 'desc') => {
+    set({ sortOrder: order })
+  },
+
+  clearError: () => {
+    set({ error: null })
+  },
+
+  clearCurrentThread: () => {
+    set({ currentThread: null })
+  },
+
+  // Optimistic updates helper
+  optimisticUpdateThread: (threadId: string, updates: Partial<any>) => {
+    const { threads, currentThread } = get()
+    
+    const updatedThreads = threads.map(thread => 
+      thread.id === threadId ? { ...thread, ...updates } : thread
+    )
+    
+    const updatedCurrentThread = currentThread?.id === threadId 
+      ? { ...currentThread, ...updates }
+      : currentThread
+
+    set({ 
+      threads: updatedThreads,
+      currentThread: updatedCurrentThread,
+    })
+  },
+
+  // Get filtered threads (computed)
+  getFilteredThreads: () => {
+    const { threads, searchQuery, statusFilter } = get()
+    
+    return threads.filter(thread => {
+      // Text search filter
+      const matchesSearch = 
+        thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        thread.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || thread.status === statusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  },
+}) 

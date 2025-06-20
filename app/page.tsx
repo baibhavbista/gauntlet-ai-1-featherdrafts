@@ -1,19 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useCallback } from "react"
 import { TwitterEditor } from "@/components/twitter-editor"
 import { LandingPage } from "@/components/landing-page"
 import { ThreadList } from "@/components/thread-list"
 import { AuthForm } from "@/components/auth/auth-form"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, useNavigation, useAppStore } from "@/store"
 import { Loader2 } from "lucide-react"
 
-type View = "landing" | "threads" | "editor" | "auth"
-
 export default function Home() {
-  const { user, loading } = useAuth()
-  const [currentView, setCurrentView] = useState<View>("landing")
-  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
+  const { user, loading, isInitialized } = useAuth()
+  const { 
+    currentView, 
+    currentThreadId,
+  } = useNavigation()
+
+  // Initialize auth on component mount - use store directly to avoid function reference issues
+  useEffect(() => {
+    if (!isInitialized) {
+      const store = useAppStore.getState()
+      store.initialize().catch(console.error)
+    }
+  }, [isInitialized])
+
+  // Navigation functions - create stable references
+  const handleNavigateToThreads = useCallback(() => {
+    const store = useAppStore.getState()
+    store.navigateToThreads()
+  }, [])
+
+  const handleNavigateToLanding = useCallback(() => {
+    const store = useAppStore.getState()
+    store.navigateToLanding()
+  }, [])
+
+  const handleNavigateToAuth = useCallback(() => {
+    const store = useAppStore.getState()
+    store.navigateToAuth()
+  }, [])
+
+  const handleSelectThread = useCallback((threadId: string) => {
+    const store = useAppStore.getState()
+    store.selectThread(threadId)
+  }, [])
+
+  const handleCreateNewThread = useCallback(() => {
+    const store = useAppStore.getState()
+    store.createNewThread()
+  }, [])
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -31,7 +65,7 @@ export default function Home() {
   if (currentView === "auth") {
     return (
       <main className="min-h-screen">
-        <AuthForm onSuccess={() => setCurrentView("threads")} />
+        <AuthForm onSuccess={handleNavigateToThreads} />
       </main>
     )
   }
@@ -40,13 +74,10 @@ export default function Home() {
   if (currentView === "editor" && user) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <TwitterEditor
-          threadId={currentThreadId}
-          onBackToThreads={() => {
-            setCurrentView("threads")
-            setCurrentThreadId(null)
-          }}
-          onBackToLanding={() => setCurrentView("landing")}
+        <TwitterEditor 
+          threadId={currentThreadId} 
+          onBackToThreads={handleNavigateToThreads}
+          onBackToLanding={handleNavigateToLanding}
         />
       </main>
     )
@@ -56,15 +87,9 @@ export default function Home() {
   if (currentView === "threads" && user) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <ThreadList
-          onSelectThread={(threadId) => {
-            setCurrentThreadId(threadId)
-            setCurrentView("editor")
-          }}
-          onCreateNew={() => {
-            setCurrentThreadId(null)
-            setCurrentView("editor")
-          }}
+        <ThreadList 
+          onSelectThread={handleSelectThread}
+          onCreateNew={handleCreateNewThread}
         />
       </main>
     )
@@ -73,15 +98,13 @@ export default function Home() {
   // Show landing page (for both authenticated and unauthenticated users)
   return (
     <main className="min-h-screen">
-      <LandingPage
-        onGetStarted={() => {
-          if (user) {
-            setCurrentView("threads")
-          } else {
-            setCurrentView("auth")
-          }
-        }}
-      />
+      <LandingPage onGetStarted={() => {
+        if (user) {
+          handleNavigateToThreads()
+        } else {
+          handleNavigateToAuth()
+        }
+      }} />
     </main>
   )
-}
+} 

@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
 import { Loader2, Mail, Lock, User, Feather } from "lucide-react"
+import { useAuth } from "@/store"
 
 interface AuthFormProps {
   onSuccess: () => void
@@ -16,68 +16,63 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
-  const [isLoading, setIsLoading] = useState(false)
+  const { 
+    loading: authLoading, 
+    error: authError, 
+    signIn, 
+    signUp, 
+    signInWithOAuth, 
+    clearError 
+  } = useAuth()
+  
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
-  const [error, setError] = useState("")
+  const [localLoading, setLocalLoading] = useState(false)
   const [message, setMessage] = useState("")
+
+  // Clear auth error when component mounts or mode changes
+  useEffect(() => {
+    clearError()
+  }, [mode, clearError])
+
+  const isLoading = authLoading || localLoading
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    setLocalLoading(true)
     setMessage("")
+    clearError()
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
-          },
-        })
-
-        if (error) throw error
-
+        await signUp(email, password, fullName)
         setMessage("Check your email for the confirmation link!")
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (error) throw error
-
+        await signIn(email, password)
         onSuccess()
       }
     } catch (error: any) {
-      setError(error.message)
+      // Error is already handled in the store
+      console.error('Auth error:', error)
     } finally {
-      setIsLoading(false)
+      setLocalLoading(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    setError("")
+    setLocalLoading(true)
+    clearError()
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) throw error
+      await signInWithOAuth("google")
+      // OAuth will redirect, so no need to call onSuccess here
     } catch (error: any) {
-      setError(error.message)
-      setIsLoading(false)
+      // Error is already handled in the store
+      console.error('OAuth error:', error)
+    } finally {
+      setLocalLoading(false)
     }
   }
 
@@ -107,7 +102,7 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>}
+          {authError && <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{authError}</div>}
 
           {message && (
             <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">{message}</div>
@@ -222,7 +217,7 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
               type="button"
               onClick={() => {
                 setMode(mode === "signin" ? "signup" : "signin")
-                setError("")
+                clearError()
                 setMessage("")
               }}
               className="text-blue-600 hover:underline font-medium"
