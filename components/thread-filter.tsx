@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Archive, CheckCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ThreadFilterProps {
   activeFilter: "all" | "draft" | "archived" | "published"
@@ -35,14 +36,14 @@ export function ThreadFilter({ activeFilter, onFilterChange, counts }: ThreadFil
             variant={isActive ? "default" : "outline"}
             size="sm"
             onClick={() => onFilterChange(filter.key)}
-            className={`flex items-center gap-2 whitespace-nowrap ${isActive ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+            className={cn("flex items-center gap-2 whitespace-nowrap", isActive && "bg-blue-600 hover:bg-blue-700")}
           >
             <Icon className="h-4 w-4" />
             {filter.label}
             {filter.count > 0 && (
               <Badge
                 variant={isActive ? "secondary" : "outline"}
-                className={`ml-1 ${isActive ? "bg-blue-100 text-blue-800" : ""}`}
+                className={cn("ml-1", isActive && "bg-blue-100 text-blue-800")}
               >
                 {filter.count}
               </Badge>

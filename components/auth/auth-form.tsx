@@ -53,7 +53,7 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
         await signIn(email, password)
         onSuccess()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error is already handled in the store
       console.error('Auth error:', error)
     } finally {
@@ -68,7 +68,7 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
     try {
       await signInWithOAuth("google")
       // OAuth will redirect, so no need to call onSuccess here
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error is already handled in the store
       console.error('OAuth error:', error)
     } finally {

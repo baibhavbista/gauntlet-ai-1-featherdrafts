@@ -17,6 +17,7 @@ import {
   FileText,
 } from "lucide-react"
 import { useAuth, useEditor, useThreads } from "@/store"
+import type { Thread } from "@/types/store"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
@@ -79,7 +80,7 @@ export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: Tw
       await saveImmediately()
 
       // Update status
-      const updateData: any = {
+      const updateData: Partial<Thread> = {
         status: newStatus,
       }
 
