@@ -33,6 +33,7 @@ export function TweetSegmentComponent({
 }: TweetSegmentProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [localContent, setLocalContent] = useState(segment.content)
+  const [showAllSpellingSuggestions, setShowAllSpellingSuggestions] = useState(false)
 
   // Only sync localContent with segment.content if they differ and we're not actively editing
   useEffect(() => {
@@ -139,8 +140,19 @@ export function TweetSegmentComponent({
               <div className="text-xs font-medium text-red-600 mb-2 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 {spellingSuggestions.length} spelling issue{spellingSuggestions.length !== 1 ? "s" : ""} found:
+                {spellingSuggestions.length > 5 && (
+                  <span className="font-normal">
+                    ({showAllSpellingSuggestions ? "All displayed. " : "5 displayed below. "}
+                    <button
+                      onClick={() => setShowAllSpellingSuggestions(!showAllSpellingSuggestions)}
+                      className="underline hover:no-underline cursor-pointer"
+                    >
+                      {showAllSpellingSuggestions ? "Show Less" : "Show More"}
+                    </button>)
+                  </span>
+                )}
               </div>
-              {spellingSuggestions.map((suggestion) => (
+              {(showAllSpellingSuggestions ? spellingSuggestions : spellingSuggestions.slice(0, 5)).map((suggestion) => (
                 <div
                   key={suggestion.id}
                   className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200"
@@ -163,6 +175,7 @@ export function TweetSegmentComponent({
                   </div>
                 </div>
               ))}
+
             </div>
           )}
 
@@ -221,7 +234,7 @@ export function TweetSegmentComponent({
             className="text-blue-500 hover:text-blue-600"
           >
             <Plus className="h-4 w-4 mr-1" />
-            Add tweet
+            Add tweet below
           </Button>
         </div>
       </CardContent>
