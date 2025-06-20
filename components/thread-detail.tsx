@@ -210,21 +210,6 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
                 <span className="text-gray-400 text-xs">Auto-saved {threadLastSaved.toLocaleTimeString()}</span>
               )
             )}
-            {totalSuggestions > 0 && (
-              <Button
-                variant="outline"
-                onClick={fixAllSuggestions}
-                className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                disabled={primaryLoadingState}
-              >
-                {primaryLoadingState && (isSpellCheckLoading || isGrammarCheckLoading) ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Wand2 className="h-4 w-4 mr-2" />
-                )}
-                Fix All ({totalSuggestions})
-              </Button>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

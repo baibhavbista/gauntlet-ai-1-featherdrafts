@@ -454,7 +454,10 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
     saveImmediately: async () => {
       const { segments, currentThread, user } = get()
       
-      if (!user) return
+      if (!user) {
+        set({ isSaving: false })
+        return
+      }
 
       // Get the current thread title from threads store
       const currentThreadTitle = currentThread?.title || 'Untitled Thread'
@@ -472,11 +475,18 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
             // Update currentThread in threads store
             // This will be handled by the threads store action
           } else {
+            console.error('Failed to create thread')
+            set({ isSaving: false })
             return
           }
         } else if (threadToUpdate.title !== currentThreadTitle) {
           // Update thread title if changed
-          await get().updateThread(threadToUpdate.id, { title: currentThreadTitle })
+          const updateSuccess = await get().updateThread(threadToUpdate.id, { title: currentThreadTitle })
+          if (!updateSuccess) {
+            console.error('Failed to update thread title')
+            set({ isSaving: false })
+            return
+          }
         }
 
         // Update segments
@@ -496,9 +506,13 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
               updatedSegments[i] = newSegment
               hasChanges = true
             }
+            // Note: If createSegment fails, we continue with other segments
+            // rather than failing the entire save operation
           } else {
             // Update existing segment
-            await get().updateSegment(segment.id, segment.content)
+            const updateSuccess = await get().updateSegment(segment.id, segment.content)
+            // Note: If updateSegment fails, we continue with other segments
+            // rather than failing the entire save operation
           }
         }
 
