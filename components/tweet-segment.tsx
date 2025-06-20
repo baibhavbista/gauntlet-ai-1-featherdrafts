@@ -34,9 +34,14 @@ export function TweetSegmentComponent({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [localContent, setLocalContent] = useState(segment.content)
 
+  // Only sync localContent with segment.content if they differ and we're not actively editing
   useEffect(() => {
-    setLocalContent(segment.content)
-  }, [segment.content])
+    // Only update local content if it's different from the segment content
+    // This prevents the infinite loop when the user is actively typing
+    if (segment.content !== localContent && document.activeElement !== textareaRef.current) {
+      setLocalContent(segment.content)
+    }
+  }, [segment.content, localContent])
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -83,8 +88,9 @@ export function TweetSegmentComponent({
             onChange={(e) => handleContentChange(e.target.value)}
             onFocus={() => onFocus(segment.id)}
             onBlur={() => {
-              // Trigger immediate save when user stops editing
-              if (onContentChange) {
+              // Only trigger save if the local content differs from segment content
+              // This prevents duplicate calls and potential infinite loops
+              if (localContent !== segment.content) {
                 onContentChange(segment.id, localContent)
               }
             }}

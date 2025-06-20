@@ -63,3 +63,5 @@ You carefully provide accurate, factual, thoughtful answers, and are a genius at
 - Use controlled components with React Hook Form
 - Validate on both client and server side
 
+# Installing packages
+When installing packages, always uses pnpm
