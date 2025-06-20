@@ -297,10 +297,13 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
       ) : (
         <div className="grid gap-4">
           {filteredThreads.map((thread) => (
-            <Card key={thread.id} className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card key={thread.id} className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={(e) => {
+              onSelectThread(thread.id)
+            }}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1" onClick={() => onSelectThread(thread.id)}>
+                  <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <CardTitle className="text-lg">{thread.title}</CardTitle>
                       <Badge className={getStatusColor(thread.status)}>{thread.status}</Badge>
