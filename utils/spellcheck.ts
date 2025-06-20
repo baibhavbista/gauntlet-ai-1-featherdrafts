@@ -1,6 +1,9 @@
 import nspell from "nspell"
 import type { SpellcheckSuggestion } from "@/types/editor"
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const twitterText = require('twitter-text')
+
 const affUrl = "https://cdn.jsdelivr.net/npm/dictionary-en@4.0.0/index.aff"
 const dicUrl = "https://cdn.jsdelivr.net/npm/dictionary-en@4.0.0/index.dic"
 
@@ -250,6 +253,11 @@ export async function preloadDictionary(): Promise<void> {
 }
 
 export function countCharacters(text: string): number {
-  // Basic character counting - in a real app you'd use twitter-text
-  return text.length
+  // Use Twitter's official character counting logic
+  // parseTweet returns an object with weightedLength which is the accurate character count
+  // This accounts for URLs (count as 23 chars), mentions, hashtags, emojis, etc.
+  const result = twitterText.default.parseTweet(text)
+  
+  // Return the weighted length which follows Twitter's official counting rules
+  return result.weightedLength
 }
