@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useCallback } from "react"
-import { TwitterEditor } from "@/components/twitter-editor"
+import { ThreadDetail } from "@/components/thread-detail"
 import { LandingPage } from "@/components/landing-page"
 import { ThreadList } from "@/components/thread-list"
 import { AuthForm } from "@/components/auth/auth-form"
@@ -74,7 +74,7 @@ export default function Home() {
   if (currentView === "editor" && user) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <TwitterEditor 
+        <ThreadDetail 
           threadId={currentThreadId} 
           onBackToThreads={handleNavigateToThreads}
           onBackToLanding={handleNavigateToLanding}

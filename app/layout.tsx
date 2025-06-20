@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'FeatherDrafts',
-  description: 'AI-powered Twitter thread editor with grammar and spell checking',
+  description: 'AI-powered Twitter thread creator with grammar and spell checking',
 }
 
 export default function RootLayout({

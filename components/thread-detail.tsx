@@ -21,13 +21,13 @@ import type { Thread } from "@/types/store"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-interface TwitterEditorProps {
+interface ThreadDetailProps {
   threadId?: string | null
   onBackToThreads?: () => void
   onBackToLanding?: () => void
 }
 
-export function TwitterEditor({ threadId, onBackToThreads, onBackToLanding }: TwitterEditorProps = {}) {
+export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: ThreadDetailProps = {}) {
   const { user, signOut, loading } = useAuth()
   const { 
     currentThread, 
