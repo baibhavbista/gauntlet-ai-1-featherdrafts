@@ -13,9 +13,10 @@ import { useAuth } from "@/store"
 interface AuthFormProps {
   onSuccess: () => void
   onBackToHome?: () => void
+  error?: string | null
 }
 
-export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
+export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormProps) {
   const { 
     loading: authLoading, 
     error: authError, 
@@ -51,7 +52,10 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
         setMessage("Check your email for the confirmation link!")
       } else {
         await signIn(email, password)
-        onSuccess()
+        // Wait a bit for auth state to update before calling onSuccess
+        setTimeout(() => {
+          onSuccess()
+        }, 100)
       }
     } catch (error: unknown) {
       // Error is already handled in the store
@@ -102,7 +106,11 @@ export function AuthForm({ onSuccess, onBackToHome }: AuthFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {authError && <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{authError}</div>}
+          {(authError || urlError) && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              {authError || urlError}
+            </div>
+          )}
 
           {message && (
             <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">{message}</div>

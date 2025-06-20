@@ -3,151 +3,121 @@ import type { AppStore, NavigationSlice } from '@/types/store'
 
 export const createNavigationSlice: StateCreator<AppStore, [], [], NavigationSlice> = (set, get) => ({
   // ====================
-  // STATE
+  // STATE (Simplified)
   // ====================
-  currentView: 'landing',
-  currentThreadId: null,
-  previousView: null,
   navigationHistory: [],
 
   // ====================
-  // NAVIGATION ACTIONS
+  // NAVIGATION HELPERS
   // ====================
-
-  navigateTo: (view: "landing" | "threads" | "editor" | "auth", threadId?: string) => {
-    const { currentView, currentThreadId, navigationHistory } = get()
-    
-    // Add current state to history
-    const newHistory = [
-      ...navigationHistory,
-      { view: currentView, threadId: currentThreadId, timestamp: Date.now() }
-    ].slice(-10) // Keep only last 10 entries
-
-    set({
-      previousView: currentView,
-      currentView: view,
-      currentThreadId: threadId || null,
-      navigationHistory: newHistory,
-    })
-  },
-
+  
+  // These are client-side navigation helpers
+  // They don't manage state but provide consistent navigation patterns
+  // The actual navigation state is managed by Next.js router
+  
   navigateToThreads: () => {
-    get().navigateTo('threads')
+    // This is a helper that can be called from components
+    // The actual navigation is handled by Next.js router in components
+    console.log('Navigate to threads - use router.push("/threads") in component')
   },
 
-  navigateToEditor: (threadId?: string) => {
-    get().navigateTo('editor', threadId)
+  navigateToThread: (threadId: string) => {
+    console.log(`Navigate to thread ${threadId} - use router.push("/thread/${threadId}") in component`)
   },
 
-  navigateToAuth: () => {
-    get().navigateTo('auth')
+  navigateToLogin: () => {
+    console.log('Navigate to login - use router.push("/login") in component')
   },
 
   navigateToLanding: () => {
-    get().navigateTo('landing')
-  },
-
-  navigateBack: () => {
-    const { previousView, navigationHistory } = get()
-    
-    if (navigationHistory.length > 0) {
-      const lastEntry = navigationHistory[navigationHistory.length - 1]
-      set({
-        currentView: lastEntry.view,
-        currentThreadId: lastEntry.threadId,
-        previousView: null,
-        navigationHistory: navigationHistory.slice(0, -1),
-      })
-    } else if (previousView) {
-      set({
-        currentView: previousView,
-        currentThreadId: null,
-        previousView: null,
-      })
-    } else {
-      // Default fallback
-      get().navigateToLanding()
-    }
+    console.log('Navigate to landing - use router.push("/") in component')
   },
 
   // ====================
-  // THREAD-SPECIFIC NAVIGATION
+  // NAVIGATION UTILITIES
   // ====================
 
-  selectThread: (threadId: string) => {
-    get().navigateToEditor(threadId)
-  },
+  addToHistory: (entry: { path: string; timestamp: number }) => {
+    const { navigationHistory } = get()
+    const newHistory = [
+      ...navigationHistory,
+      entry
+    ].slice(-10) // Keep only last 10 entries
 
-  createNewThread: () => {
-    get().navigateToEditor()
-  },
-
-  returnToThreads: () => {
-    get().navigateToThreads()
-  },
-
-  // ====================
-  // UTILITY METHODS
-  // ====================
-
-  getCurrentRoute: () => {
-    const { currentView, currentThreadId } = get()
-    return {
-      view: currentView,
-      threadId: currentThreadId,
-    }
-  },
-
-  canGoBack: () => {
-    const { previousView, navigationHistory } = get()
-    return previousView !== null || navigationHistory.length > 0
+    set({ navigationHistory: newHistory })
   },
 
   clearHistory: () => {
-    set({
-      navigationHistory: [],
-      previousView: null,
-    })
+    set({ navigationHistory: [] })
+  },
+
+  getHistory: () => {
+    return get().navigationHistory
   },
 
   // ====================
-  // AUTH-AWARE NAVIGATION
+  // THREAD-SPECIFIC HELPERS
   // ====================
 
-  handleAuthenticatedNavigation: (targetView: "landing" | "threads" | "editor" | "auth") => {
-    const { user } = get()
-    
-    if (!user && (targetView === 'threads' || targetView === 'editor')) {
-      // Redirect unauthenticated users to auth
-      get().navigateToAuth()
-      return
-    }
-    
-    if (user && targetView === 'auth') {
-      // Redirect authenticated users away from auth
-      get().navigateToThreads()
-      return
-    }
-    
-    get().navigateTo(targetView)
+  // These provide consistent patterns for thread navigation
+  selectThread: (threadId: string) => {
+    console.log(`Select thread ${threadId} - use router.push("/thread/${threadId}") in component`)
   },
 
-  // Smart navigation that respects authentication
-  smartNavigateTo: (view: "landing" | "threads" | "editor" | "auth", threadId?: string) => {
-    const { user } = get()
-    
-    // Handle auth requirements
-    if (!user && (view === 'threads' || view === 'editor')) {
-      get().navigateToAuth()
-      return
-    }
-    
-    // Handle already authenticated users
-    if (user && view === 'auth') {
-      get().navigateToThreads()
-      return
-    }
-    
-    get().navigateTo(view, threadId)
+  createNewThread: () => {
+    console.log('Create new thread - handle in ThreadList component with router navigation')
   },
-}) 
+
+  returnToThreads: () => {
+    console.log('Return to threads - use router.push("/threads") in component')
+  },
+
+  // ====================
+  // LEGACY METHODS (Deprecated)
+  // ====================
+  
+  // These methods are kept for backward compatibility but will be removed
+  // They now just log warnings and don't perform any navigation
+  
+  navigateTo: (view: string, threadId?: string) => {
+    console.warn('navigateTo is deprecated. Use Next.js router directly in components.')
+    console.warn(`Attempted navigation to: ${view}${threadId ? ` with threadId: ${threadId}` : ''}`)
+  },
+
+  navigateToEditor: (threadId?: string) => {
+    console.warn('navigateToEditor is deprecated. Use router.push("/thread/[id]") in components.')
+    if (threadId) {
+      console.warn(`Use: router.push("/thread/${threadId}")`)
+    }
+  },
+
+  navigateToAuth: () => {
+    console.warn('navigateToAuth is deprecated. Use router.push("/login") in components.')
+  },
+
+  navigateBack: () => {
+    console.warn('navigateBack is deprecated. Use router.back() or router.push() in components.')
+  },
+
+  // ====================
+  // REMOVED STATE GETTERS
+  // ====================
+  
+  getCurrentRoute: () => {
+    console.warn('getCurrentRoute is deprecated. Use useRouter() and useParams() hooks in components.')
+    return { view: 'unknown', threadId: null }
+  },
+
+  canGoBack: () => {
+    console.warn('canGoBack is deprecated. Use window.history or router state in components.')
+    return false
+  },
+
+  handleAuthenticatedNavigation: () => {
+    console.warn('handleAuthenticatedNavigation is deprecated. Auth checks are now handled by middleware.')
+  },
+
+  smartNavigateTo: () => {
+    console.warn('smartNavigateTo is deprecated. Auth checks are now handled by middleware.')
+  },
+})

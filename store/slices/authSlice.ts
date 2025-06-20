@@ -12,6 +12,12 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
   // Actions - real implementations
   initialize: async () => {
     try {
+      // Prevent multiple initializations
+      const { isInitialized } = get()
+      if (isInitialized) {
+        return
+      }
+
       set({ loading: true, error: null })
 
       // Get initial session

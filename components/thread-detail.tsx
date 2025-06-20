@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   Edit2,
   CheckCircle,
-  Feather,
   ChevronDown,
   Archive,
   FileText,
@@ -20,6 +19,7 @@ import { useAuth, useEditor, useThreads } from "@/store"
 import type { Thread } from "@/types/store"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { PageLoading } from "@/components/ui/loading-spinner"
 
 interface ThreadDetailProps {
   threadId?: string | null
@@ -28,7 +28,7 @@ interface ThreadDetailProps {
 }
 
 export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: ThreadDetailProps = {}) {
-  const { user, signOut, loading } = useAuth()
+  const { user, signOut, isInitialized } = useAuth()
   const { 
     currentThread, 
     updateThread,
@@ -104,35 +104,18 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
   const grammarSuggestions = suggestions.filter((s) => s.type === "grammar")
   const totalSuggestions = suggestions.length
 
+  // Prioritize loading states - show only the most important one at a time
+  const primaryLoadingState = isSaving || isUpdating || isSpellCheckLoading || isGrammarCheckLoading
+
   // Show loading spinner while checking auth or loading thread
-  if (loading || isThreadLoading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="bg-blue-600 p-3 rounded-lg mb-4 mx-auto w-fit">
-            <Feather className="h-8 w-8 text-white animate-spin" />
-          </div>
-          <p className="text-gray-600">
-            {loading ? "Loading..." : "Loading thread..."}
-          </p>
-        </div>
-      </main>
-    )
+  if (!isInitialized || isThreadLoading) {
+    return <PageLoading variant="branded" />
   }
 
   // Show loading spinner if we have a threadId but no currentThread yet (prevents flash of empty content)
   // This covers the case where we're transitioning between threads or the thread hasn't loaded yet
   if (threadId && !currentThread) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="bg-blue-600 p-3 rounded-lg mb-4 mx-auto w-fit">
-            <Feather className="h-8 w-8 text-white animate-spin" />
-          </div>
-          <p className="text-gray-600">Loading thread...</p>
-        </div>
-      </main>
-    )
+    return <PageLoading variant="branded" />
   }
 
   return (
@@ -198,23 +181,27 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
           </div>
 
           <div className="flex items-center gap-2">
-            {threadLastSaved && !isSaving && !isUpdating && (
-              <span className="text-gray-400 text-xs">Auto-saved {threadLastSaved.toLocaleTimeString()}</span>
-            )}
-            {(isSaving || isUpdating) && (
+            {/* Show primary loading state with highest priority */}
+            {primaryLoadingState ? (
               <span className="text-gray-400 text-xs flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                {isSaving ? "Saving..." : "Updating..."}
+                {isSaving && "Saving..."}
+                {isUpdating && !isSaving && "Updating..."}
+                {(isSpellCheckLoading || isGrammarCheckLoading) && !isSaving && !isUpdating && "Processing..."}
               </span>
+            ) : (
+              threadLastSaved && (
+                <span className="text-gray-400 text-xs">Auto-saved {threadLastSaved.toLocaleTimeString()}</span>
+              )
             )}
             {totalSuggestions > 0 && (
               <Button
                 variant="outline"
                 onClick={fixAllSuggestions}
                 className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                disabled={isSpellCheckLoading || isGrammarCheckLoading}
+                disabled={primaryLoadingState}
               >
-                {isSpellCheckLoading || isGrammarCheckLoading ? (
+                {primaryLoadingState && (isSpellCheckLoading || isGrammarCheckLoading) ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Wand2 className="h-4 w-4 mr-2" />
@@ -232,7 +219,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
                     currentThread?.status === "archived" && "bg-gray-50 text-gray-700 border-gray-200",
                     currentThread?.status === "draft" && "bg-blue-50 text-blue-700 border-blue-200",
                   )}
-                  disabled={isSaving}
+                  disabled={primaryLoadingState}
                 >
                   {currentThread?.status === "published" && <CheckCircle className="h-4 w-4 mr-2" />}
                   {currentThread?.status === "archived" && <Archive className="h-4 w-4 mr-2" />}
@@ -267,7 +254,8 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
             characters total
           </span>
 
-          {dictionaryStatus.isLoading && (
+          {/* Only show dictionary loading if no primary loading state is active */}
+          {!primaryLoadingState && dictionaryStatus.isLoading && (
             <div className="flex items-center gap-1 text-blue-600">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span className="text-xs">Loading dictionary...</span>
@@ -295,7 +283,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
             onAddSegment={addSegment}
             suggestions={suggestions}
             onSuggestionApply={applySuggestion}
-            isSpellCheckLoading={isSpellCheckLoading || isGrammarCheckLoading}
+            isSpellCheckLoading={primaryLoadingState}
           />
         ))}
       </div>

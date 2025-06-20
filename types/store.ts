@@ -165,43 +165,41 @@ export interface EditorActions {
 export type EditorSlice = EditorState & EditorActions
 
 // ==================== NAVIGATION SLICE ====================
-export type ViewType = "landing" | "threads" | "editor" | "auth"
-
 export interface NavigationHistoryEntry {
-  view: ViewType
-  threadId: string | null
+  path: string
   timestamp: number
 }
 
 export interface NavigationState {
-  currentView: ViewType
-  currentThreadId: string | null
-  previousView: ViewType | null
   navigationHistory: NavigationHistoryEntry[]
 }
 
 export interface NavigationActions {
-  // Primary navigation
-  navigateTo: (view: ViewType, threadId?: string) => void
+  // Navigation helpers (log to console, actual navigation handled by Next.js router)
   navigateToThreads: () => void
-  navigateToEditor: (threadId?: string) => void
-  navigateToAuth: () => void
+  navigateToThread: (threadId: string) => void
+  navigateToLogin: () => void
   navigateToLanding: () => void
-  navigateBack: () => void
   
-  // Thread-specific navigation
+  // Navigation utilities
+  addToHistory: (entry: NavigationHistoryEntry) => void
+  clearHistory: () => void
+  getHistory: () => NavigationHistoryEntry[]
+  
+  // Thread-specific helpers
   selectThread: (threadId: string) => void
   createNewThread: () => void
   returnToThreads: () => void
   
-  // Utility methods
-  getCurrentRoute: () => { view: ViewType; threadId: string | null }
+  // Deprecated methods (kept for backward compatibility)
+  navigateTo: (view: string, threadId?: string) => void
+  navigateToEditor: (threadId?: string) => void
+  navigateToAuth: () => void
+  navigateBack: () => void
+  getCurrentRoute: () => { view: string; threadId: string | null }
   canGoBack: () => boolean
-  clearHistory: () => void
-  
-  // Auth-aware navigation
-  handleAuthenticatedNavigation: (targetView: ViewType) => void
-  smartNavigateTo: (view: ViewType, threadId?: string) => void
+  handleAuthenticatedNavigation: () => void
+  smartNavigateTo: () => void
 }
 
 export type NavigationSlice = NavigationState & NavigationActions

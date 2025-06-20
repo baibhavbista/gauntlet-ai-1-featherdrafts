@@ -3,37 +3,39 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Loader2 } from "lucide-react"
+import { PageLoading } from "@/components/ui/loading-spinner"
 
 export default function AuthCallback() {
   const router = useRouter()
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { data, error } = await supabase.auth.getSession()
+      try {
+        // Handle hash-based auth callback for OAuth
+        const { data, error } = await supabase.auth.getSession()
 
-      if (error) {
-        console.error("Auth callback error:", error)
-        router.push("/")
-        return
-      }
+        if (error) {
+          console.error("Auth callback error:", error)
+          router.push("/login?error=" + encodeURIComponent(error.message))
+          return
+        }
 
-      if (data.session) {
-        router.push("/")
-      } else {
-        router.push("/")
+        if (data.session) {
+          // Give a moment for the auth state to propagate
+          setTimeout(() => {
+            router.push("/threads")
+          }, 200)
+        } else {
+          router.push("/login")
+        }
+      } catch (error) {
+        console.error("Unexpected error in auth callback:", error)
+        router.push("/login")
       }
     }
 
     handleAuthCallback()
   }, [router])
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Completing sign in...</p>
-      </div>
-    </div>
-  )
+  return <PageLoading />
 }

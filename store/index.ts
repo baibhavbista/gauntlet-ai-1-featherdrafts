@@ -25,24 +25,22 @@ export const useAppStore = create<AppStore>()(
         
         // Define what parts of the state to persist
         partialize: (state) => ({
-          // Auth persistence
-          user: state.user,
-          isInitialized: state.isInitialized,
-          
-          // Navigation persistence (optional)
-          currentView: state.currentView === 'auth' ? 'landing' : state.currentView, // Don't persist auth view
-          currentThreadId: state.currentThreadId,
+          // Navigation persistence (simplified)
+          navigationHistory: state.navigationHistory,
           
           // Editor preferences
           isAutoSaveEnabled: state.isAutoSaveEnabled,
           dictionaryStatus: state.dictionaryStatus,
           
-          // Don't persist:
+          // Don't persist auth state - let it initialize fresh each time:
+          // - user (will be loaded from Supabase session)
+          // - isInitialized (should start false)
           // - loading states
           // - error states
           // - temporary UI states
           // - current thread content (will be loaded fresh)
           // - suggestions (will be regenerated)
+          // - view state (now handled by URL)
         }),
         
         // Skip merge function for now to avoid TypeScript complexity
@@ -60,9 +58,9 @@ export const useAppStore = create<AppStore>()(
 export const resetStore = () => {
   useAppStore.setState((state) => ({
     ...state,
-    // Reset to initial values
+    // Reset auth to initial values
     user: null,
-    loading: false,
+    loading: true, // Start with loading true for proper initialization
     error: null,
     isInitialized: false,
     threads: [],
@@ -91,9 +89,6 @@ export const resetStore = () => {
     },
     isEditingTitle: false,
     selectedSuggestionId: null,
-    currentView: "landing",
-    currentThreadId: null,
-    previousView: null,
     navigationHistory: [],
     isCreateThreadDialogOpen: false,
     isDeleteThreadDialogOpen: false,
@@ -185,28 +180,33 @@ export const useThreads = () => ({
   getFilteredThreads: useAppStore(state => state.getFilteredThreads),
 })
 
-export const useNavigation = () => ({
-  // State
-  currentView: useAppStore(state => state.currentView),
-  currentThreadId: useAppStore(state => state.currentThreadId),
-  previousView: useAppStore(state => state.previousView),
+export const useNavigationStore = () => ({
+  // State (simplified)
   navigationHistory: useAppStore(state => state.navigationHistory),
   
-  // Actions
-  navigateTo: useAppStore(state => state.navigateTo),
+  // Navigation helpers (recommend using Next.js router directly in components)
   navigateToThreads: useAppStore(state => state.navigateToThreads),
-  navigateToEditor: useAppStore(state => state.navigateToEditor),
-  navigateToAuth: useAppStore(state => state.navigateToAuth),
+  navigateToThread: useAppStore(state => state.navigateToThread),
+  navigateToLogin: useAppStore(state => state.navigateToLogin),
   navigateToLanding: useAppStore(state => state.navigateToLanding),
-  navigateBack: useAppStore(state => state.navigateBack),
+  
+  // Navigation utilities
+  addToHistory: useAppStore(state => state.addToHistory),
+  clearHistory: useAppStore(state => state.clearHistory),
+  getHistory: useAppStore(state => state.getHistory),
+  
+  // Thread-specific helpers
   selectThread: useAppStore(state => state.selectThread),
   createNewThread: useAppStore(state => state.createNewThread),
   returnToThreads: useAppStore(state => state.returnToThreads),
   
-  // Utility methods
+  // Deprecated methods (kept for backward compatibility - will log warnings)
+  navigateTo: useAppStore(state => state.navigateTo),
+  navigateToEditor: useAppStore(state => state.navigateToEditor),
+  navigateToAuth: useAppStore(state => state.navigateToAuth),
+  navigateBack: useAppStore(state => state.navigateBack),
   getCurrentRoute: useAppStore(state => state.getCurrentRoute),
   canGoBack: useAppStore(state => state.canGoBack),
-  clearHistory: useAppStore(state => state.clearHistory),
   handleAuthenticatedNavigation: useAppStore(state => state.handleAuthenticatedNavigation),
   smartNavigateTo: useAppStore(state => state.smartNavigateTo),
 })
