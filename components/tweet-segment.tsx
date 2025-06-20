@@ -111,11 +111,11 @@ export function TweetSegmentComponent({
                 let className = "text-transparent"
 
                 if (isInSpellingError) {
-                  // Red underline for spelling errors (Grammarly style)
-                  className = "bg-red-50 text-red-600 underline decoration-wavy decoration-red-400"
+                  // Red underline for spelling errors (Grammarly style) - keep text transparent
+                  className = "text-transparent underline decoration-wavy decoration-red-400 decoration-2"
                 } else if (isInGrammarError) {
-                  // Blue underline for grammar errors (Grammarly style)
-                  className = "bg-blue-50 text-blue-600 underline decoration-wavy decoration-blue-400"
+                  // Blue underline for grammar errors (Grammarly style) - keep text transparent
+                  className = "text-transparent underline decoration-wavy decoration-blue-400 decoration-2"
                 }
 
                 return (
@@ -142,9 +142,7 @@ export function TweetSegmentComponent({
                   <span className="font-medium text-red-700">"{suggestion.word}"</span>
                   <span className="text-gray-400">→</span>
                   <div className="flex gap-1 flex-wrap">
-                    {suggestion.suggestions.length === 0 && (
-                      <span className="text-gray-400">Unknown</span>
-                    )}
+                    {suggestion.suggestions.length === 0 && <span className="text-gray-400">Unknown</span>}
                     {suggestion.suggestions.map((replacement, index) => (
                       <Button
                         key={index}
@@ -191,7 +189,6 @@ export function TweetSegmentComponent({
                             className="h-7 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
                             onClick={() => onSuggestionApply(suggestion.id, replacement)}
                           >
-
                             {replacement === ""
                               ? "Remove"
                               : replacement === "[consider rephrasing]"
