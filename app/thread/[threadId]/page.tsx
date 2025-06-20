@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter, useParams, usePathname, useSearchParams } from "next/navigation"
 import { ThreadDetail } from "@/components/thread-detail"
 import { useAuth } from "@/store"
 import { PageLoading } from "@/components/ui/loading-spinner"
 import { notFound } from "next/navigation"
 
-export default function ThreadDetailPage() {
+function ThreadDetailPageContent() {
   const { user, isInitialized } = useAuth()
   const router = useRouter()
   const params = useParams()
@@ -55,5 +55,13 @@ export default function ThreadDetailPage() {
         onBackToThreads={() => router.push('/threads')}
       />
     </main>
+  )
+}
+
+export default function ThreadDetailPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <ThreadDetailPageContent />
+    </Suspense>
   )
 } 
