@@ -9,13 +9,8 @@ function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T 
   let timeoutId: NodeJS.Timeout | null = null
   
   const debouncedFunc = ((...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-    }
-    
-    timeoutId = setTimeout(() => {
-      func(...args)
-    }, delay)
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func(...args), delay)
   }) as T & { cancel: () => void }
   
   debouncedFunc.cancel = () => {

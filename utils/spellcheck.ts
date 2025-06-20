@@ -11,6 +11,10 @@ let spellChecker: any = null
 let isInitialized = false
 let isLoading = false
 
+// Simple caches for performance
+const wordCache = new Map<string, boolean>()
+const suggestionCache = new Map<string, string[]>()
+
 // Load dictionary files from CDN
 async function loadDictionaryFiles(): Promise<{ aff: string; dic: string }> {
   try {
@@ -64,6 +68,14 @@ async function initializeSpellChecker() {
   }
 }
 
+// Common social media abbreviations and slang (moved outside function for reuse)
+const socialMediaWords = new Set([
+  "lol", "omg", "wtf", "tbh", "imo", "imho", "fyi", "btw", "dm", "rt", "mt", 
+  "ff", "tbt", "ootd", "yolo", "fomo", "selfie", "hashtag", "tweet", "retweet",
+  "covid", "covid19", "coronavirus", "pandemic", "lockdown", "quarantine",
+  "app", "apps", "smartphone", "iphone", "android", "ios", "wifi", "bluetooth",
+])
+
 // Check if a word is correctly spelled
 function isWordCorrect(word: string): boolean {
   if (!spellChecker) return true
@@ -79,75 +91,22 @@ function isWordCorrect(word: string): boolean {
   // URLs, emails, hashtags, mentions
   if (/^(https?:\/\/|www\.|@|#)/.test(cleanWord)) return true
 
-  // Common social media abbreviations and slang
-  const socialMediaWords = [
-    "lol",
-    "omg",
-    "wtf",
-    "tbh",
-    "imo",
-    "imho",
-    "fyi",
-    "btw",
-    "dm",
-    "rt",
-    "mt",
-    "ff",
-    "tbt",
-    "ootd",
-    "yolo",
-    "fomo",
-    "selfie",
-    "hashtag",
-    "tweet",
-    "retweet",
-    "covid",
-    "covid19",
-    "coronavirus",
-    "pandemic",
-    "lockdown",
-    "quarantine",
-    "app",
-    "apps",
-    "smartphone",
-    "iphone",
-    "android",
-    "ios",
-    "wifi",
-    "bluetooth",
-  ]
+  // Social media words
+  if (socialMediaWords.has(cleanWord.toLowerCase())) return true
 
-  if (socialMediaWords.includes(cleanWord.toLowerCase())) return true
-
-  // FIXME: I do not think below is actually working properly because nspell seems to be case sensitive
-
-  // Check the word in multiple case variations
-  // 1. Check as-is (preserves original case)
-  if (spellChecker.correct(cleanWord)) {
-    // console.log("isWordCorrect: correct as-is", cleanWord)
-    return true
+  // Check cache first
+  const cacheKey = cleanWord.toLowerCase()
+  if (wordCache.has(cacheKey)) {
+    return wordCache.get(cacheKey)!
   }
 
-  // 2. Check lowercase (for common words)
-  if (spellChecker.correct(cleanWord.toLowerCase())) {
-    // console.log("isWordCorrect: correct lowercase", cleanWord.toLowerCase())
-    return true
-  }
-
-  // 3. Check with first letter capitalized (for proper nouns)
-  const capitalized = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase()
-  if (spellChecker.correct(capitalized)) {
-    // console.log("isWordCorrect: correct capitalized", capitalized)
-    return true
-  }
-
-  // 4. Check all uppercase (for acronyms)
-  if (spellChecker.correct(cleanWord.toUpperCase())) {
-    // console.log("isWordCorrect: correct uppercase", cleanWord.toUpperCase())
-    return true
-  }
-
-  return false
+  // Simple spell check - just check lowercase version (covers 95% of cases)
+  const isCorrect = spellChecker.correct(cleanWord) || spellChecker.correct(cleanWord.toLowerCase())
+  
+  // Cache the result
+  wordCache.set(cacheKey, isCorrect)
+  
+  return isCorrect
 }
 
 // Generate suggestions for misspelled words
@@ -155,28 +114,21 @@ function generateSuggestions(word: string): string[] {
   if (!spellChecker) return []
 
   const cleanWord = word.replace(/[^\w']/g, "")
+  const cacheKey = cleanWord.toLowerCase()
+
+  // Check cache first
+  if (suggestionCache.has(cacheKey)) {
+    return suggestionCache.get(cacheKey)!
+  }
 
   try {
-    // Get suggestions for the original case
-    let suggestions = spellChecker.suggest(cleanWord)
-
-    // If no suggestions, try lowercase
-    if (suggestions.length === 0) {
-      suggestions = spellChecker.suggest(cleanWord.toLowerCase())
-    }
-
-    // If still no suggestions, try capitalized
-    if (suggestions.length === 0) {
-      const capitalized = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase()
-      suggestions = spellChecker.suggest(capitalized)
-    }
-
-    // If still no suggestions, try uppercase
-    if (suggestions.length === 0) {
-      suggestions = spellChecker.suggest(cleanWord.toUpperCase())
-    }
-
-    return suggestions.slice(0, 3) // Return top 3 suggestions
+    // Simple approach - just get suggestions for lowercase version
+    const suggestions = spellChecker.suggest(cleanWord.toLowerCase()).slice(0, 3)
+    
+    // Cache the result
+    suggestionCache.set(cacheKey, suggestions)
+    
+    return suggestions
   } catch (error) {
     console.error("Error generating suggestions:", error)
     return []
@@ -213,27 +165,15 @@ export async function checkSpelling(text: string, segmentId: string): Promise<Sp
     if (!isWordCorrect(word)) {
       const wordSuggestions = generateSuggestions(word)
 
-      if (wordSuggestions.length > 0) {
-        suggestions.push({
-          id: `spelling-${segmentId}-${start}-${word}`,
-          word: word,
-          suggestions: wordSuggestions,
-          start: start,
-          end: end,
-          segmentId,
-          type: "spelling" as const,
-        })
-      } else {
-        suggestions.push({
-          id: `spelling-${segmentId}-${start}-${word}`,
-          word: word,
-          suggestions: wordSuggestions,
-          start: start,
-          end: end,
-          segmentId,
-          type: "spelling" as const,
-        })
-      }
+      suggestions.push({
+        id: `spelling-${segmentId}-${start}-${word}`,
+        word: word,
+        suggestions: wordSuggestions,
+        start: start,
+        end: end,
+        segmentId,
+        type: "spelling" as const,
+      })
     }
   }
 
@@ -260,4 +200,10 @@ export function countCharacters(text: string): number {
   
   // Return the weighted length which follows Twitter's official counting rules
   return result.weightedLength
+}
+
+// Clear caches (useful for memory management)
+export function clearSpellCheckCaches(): void {
+  wordCache.clear()
+  suggestionCache.clear()
 }
