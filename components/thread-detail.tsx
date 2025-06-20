@@ -51,6 +51,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
     removeSegment,
     setActiveSegment,
     applySuggestion,
+    applySuggestions,
     fixAllSuggestions,
     setEditingTitle,
     initializeEditor,
@@ -281,6 +282,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
             onAddSegment={addSegment}
             suggestions={suggestions}
             onSuggestionApply={applySuggestion}
+            onSuggestionsApply={applySuggestions}
             isSpellCheckLoading={primaryLoadingState}
           />
         ))}

@@ -352,6 +352,52 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
       get().updateSegmentContent(suggestion.segmentId, newContent)
     },
 
+    applySuggestions: (suggestionIds: string[], replacement: string) => {
+      const { suggestions, segments } = get()
+      
+      if (suggestionIds.length === 0) return
+
+      // Special handling for AI suggestions that start with [
+      if (replacement.startsWith('[')) {
+        // TODO: Implement AI suggestion handling
+        console.log('AI suggestion detected:', replacement)
+        return
+      }
+
+      // Get all suggestions and group by segment
+      const suggestionsToApply = suggestions.filter(s => suggestionIds.includes(s.id))
+      const suggestionsBySegment = suggestionsToApply.reduce((acc, suggestion) => {
+        if (!acc[suggestion.segmentId]) {
+          acc[suggestion.segmentId] = []
+        }
+        acc[suggestion.segmentId].push(suggestion)
+        return acc
+      }, {} as Record<string, typeof suggestions>)
+
+      // Apply replacements for each segment
+      Object.entries(suggestionsBySegment).forEach(([segmentId, segmentSuggestions]) => {
+        const segment = segments.find(s => s.id === segmentId)
+        if (!segment) return
+
+        // Sort suggestions by position (descending - rightmost first)
+        // This ensures that applying replacements doesn't affect positions of earlier suggestions
+        const sortedSuggestions = segmentSuggestions.sort((a, b) => b.start - a.start)
+
+        let newContent = segment.content
+
+        // Apply all replacements from right to left
+        sortedSuggestions.forEach(suggestion => {
+          newContent = 
+            newContent.substring(0, suggestion.start) + 
+            replacement + 
+            newContent.substring(suggestion.end)
+        })
+
+        // Update the segment content
+        get().updateSegmentContent(segmentId, newContent)
+      })
+    },
+
     dismissSuggestion: (suggestionId: string) => {
       const { suggestions } = get()
       const filteredSuggestions = suggestions.filter(s => s.id !== suggestionId)

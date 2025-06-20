@@ -5,6 +5,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CharacterCounter } from "./character-counter"
 import type { TweetSegment, Suggestion, SpellcheckSuggestion, GrammarSuggestion } from "@/types/editor"
+
+type GroupedSpellingSuggestion = SpellcheckSuggestion & {
+  occurrences: number
+  allSuggestions: string[]
+  allIds: string[]
+}
 import { cn } from "@/lib/utils"
 import { X, Plus, AlertCircle, BookOpen } from "lucide-react"
 
@@ -17,6 +23,7 @@ interface TweetSegmentProps {
   onAddSegment: (afterId: string) => void
   suggestions: Suggestion[]
   onSuggestionApply: (suggestionId: string, replacement: string) => void
+  onSuggestionsApply: (suggestionIds: string[], replacement: string) => void
   isSpellCheckLoading?: boolean
 }
 
@@ -29,6 +36,7 @@ export function TweetSegmentComponent({
   onAddSegment,
   suggestions,
   onSuggestionApply,
+  onSuggestionsApply,
   isSpellCheckLoading = false,
 }: TweetSegmentProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -56,8 +64,52 @@ export function TweetSegmentComponent({
     onContentChange(segment.id, value)
   }
 
+  const handleGroupedSuggestionApply = (groupedSuggestion: GroupedSpellingSuggestion, replacement: string) => {
+    // Apply the replacement to all occurrences of this word using batch operation
+    if (groupedSuggestion.allIds.length === 1) {
+      // Single occurrence - use regular apply
+      onSuggestionApply(groupedSuggestion.allIds[0], replacement)
+    } else {
+      // Multiple occurrences - use batch apply to handle position shifts correctly
+      onSuggestionsApply(groupedSuggestion.allIds, replacement)
+    }
+  }
+
   const segmentSuggestions = suggestions.filter((s) => s.segmentId === segment.id)
-  const spellingSuggestions = segmentSuggestions.filter((s) => s.type === "spelling")
+  const rawSpellingSuggestions = segmentSuggestions.filter((s) => s.type === "spelling")
+
+  // Group spelling suggestions by word to deduplicate
+  const spellingSuggestionsMap = rawSpellingSuggestions.reduce((acc, suggestion) => {
+    const word = (suggestion as SpellcheckSuggestion).word
+    if (!acc[word]) {
+      acc[word] = {
+        ...suggestion,
+        occurrences: 1,
+        allSuggestions: [...suggestion.suggestions],
+        allIds: [suggestion.id]
+      } as GroupedSpellingSuggestion
+    } else {
+      acc[word].occurrences += 1
+      acc[word].allIds.push(suggestion.id)
+      // Merge unique suggestions
+      suggestion.suggestions.forEach(s => {
+        if (!acc[word].allSuggestions.includes(s)) {
+          acc[word].allSuggestions.push(s)
+        }
+      })
+    }
+    return acc
+  }, {} as Record<string, GroupedSpellingSuggestion>)
+
+  const spellingSuggestions = Object.values(spellingSuggestionsMap).sort((a, b) => {
+    // First sort by number of occurrences (descending - most occurrences first)
+    if (a.occurrences !== b.occurrences) {
+      return b.occurrences - a.occurrences
+    }
+    // If same number of occurrences, sort by position in text (ascending - earlier appearance first)
+    return a.start - b.start
+  })
+
   const grammarSuggestions = segmentSuggestions.filter((s) => s.type === "grammar")
 
   return (
@@ -152,29 +204,39 @@ export function TweetSegmentComponent({
                   </span>
                 )}
               </div>
-              {(showAllSpellingSuggestions ? spellingSuggestions : spellingSuggestions.slice(0, 5)).map((suggestion) => (
-                <div
-                  key={suggestion.id}
-                  className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200"
-                >
-                  <span className="font-medium text-red-700">"{(suggestion as SpellcheckSuggestion).word}"</span>
-                  <span className="text-gray-400">→</span>
-                  <div className="flex gap-1 flex-wrap">
-                    {suggestion.suggestions.length === 0 && <span className="text-gray-400">Unknown</span>}
-                    {suggestion.suggestions.map((replacement, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs border-red-200 text-red-700 hover:bg-red-100"
-                        onClick={() => onSuggestionApply(suggestion.id, replacement)}
-                      >
-                        {replacement}
-                      </Button>
-                    ))}
+              {(showAllSpellingSuggestions ? spellingSuggestions : spellingSuggestions.slice(0, 5)).map((suggestion) => {
+                const groupedSuggestion = suggestion as GroupedSpellingSuggestion
+                return (
+                  <div
+                    key={suggestion.id}
+                    className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200"
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="font-medium text-red-700">"{groupedSuggestion.word}"</span>
+                      <span className="text-gray-400">→</span>
+                      <div className="flex gap-1 flex-wrap">
+                        {groupedSuggestion.allSuggestions.length === 0 && <span className="text-gray-400">Unknown</span>}
+                        {groupedSuggestion.allSuggestions.map((replacement: string, index: number) => (
+                          <Button
+                            key={index}
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs border-red-200 text-red-700 hover:bg-red-100"
+                            onClick={() => handleGroupedSuggestionApply(groupedSuggestion, replacement)}
+                          >
+                            {replacement}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    {groupedSuggestion.occurrences > 1 && (
+                      <span className="text-xs text-gray-400 ml-auto">
+                        {groupedSuggestion.occurrences} occurrences
+                      </span>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
             </div>
           )}

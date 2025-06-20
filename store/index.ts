@@ -288,6 +288,7 @@ export const useEditor = () => ({
   runAllChecks: useAppStore(state => state.runAllChecks),
   runSingleSegmentCheck: useAppStore(state => state.runSingleSegmentCheck),
   applySuggestion: useAppStore(state => state.applySuggestion),
+  applySuggestions: useAppStore(state => state.applySuggestions),
   dismissSuggestion: useAppStore(state => state.dismissSuggestion),
   fixAllSuggestions: useAppStore(state => state.fixAllSuggestions),
   clearSuggestions: useAppStore(state => state.clearSuggestions),

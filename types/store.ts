@@ -129,6 +129,7 @@ export interface EditorActions {
   
   // Suggestions management
   applySuggestion: (suggestionId: string, replacement: string) => void
+  applySuggestions: (suggestionIds: string[], replacement: string) => void
   dismissSuggestion: (suggestionId: string) => void
   fixAllSuggestions: () => Promise<void>
   clearSuggestions: () => void
