@@ -56,6 +56,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
     setEditingTitle,
     initializeEditor,
     saveImmediately,
+    runSpellCheck,
   } = useEditor()
 
   // Initialize editor when component mounts or threadId changes
@@ -95,6 +96,22 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
       await updateThread(currentThread.id, updateData)
     },
     [currentThread?.id, saveImmediately, updateThread]
+  )
+
+  // Handle word added to dictionary - re-check segments containing that word
+  const handleWordAddedToDictionary = useCallback(
+    (word: string) => {
+      // Find segments that contain the word (case insensitive)
+      const segmentsToRecheck = segments.filter(segment =>
+        segment.content.toLowerCase().includes(word.toLowerCase())
+      )
+      
+      if (segmentsToRecheck.length > 0) {
+        // Re-run spell check for these segments
+        runSpellCheck(segmentsToRecheck)
+      }
+    },
+    [segments, runSpellCheck]
   )
 
   // Calculate totals
@@ -283,6 +300,7 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
             suggestions={suggestions}
             onSuggestionApply={applySuggestion}
             onSuggestionsApply={applySuggestions}
+            onWordAddedToDictionary={handleWordAddedToDictionary}
             isSpellCheckLoading={primaryLoadingState}
           />
         ))}

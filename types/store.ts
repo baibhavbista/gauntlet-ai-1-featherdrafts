@@ -7,6 +7,8 @@ export interface AuthState {
   loading: boolean
   error: string | null
   isInitialized: boolean
+  customDictionary: string[]
+  isDictionaryLoaded: boolean
 }
 
 export interface AuthActions {
@@ -17,10 +19,19 @@ export interface AuthActions {
   signInWithOAuth: (provider: 'google') => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
+  
+  // Custom Dictionary methods
+  loadCustomDictionary: () => Promise<void>
+  addWordToDictionary: (word: string) => Promise<boolean>
+  removeWordFromDictionary: (word: string) => Promise<boolean>
+  syncDictionaryToServer: () => Promise<void>
+  
   // Internal methods
   setUser: (user: User | null) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
+  setCustomDictionary: (dictionary: string[]) => void
+  setDictionaryLoaded: (loaded: boolean) => void
 }
 
 export type AuthSlice = AuthState & AuthActions

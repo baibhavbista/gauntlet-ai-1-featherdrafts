@@ -11,7 +11,6 @@ For tone and voice, users can choose from predefined styles (like witty, profess
 Once finished, users can export their entire thread as clean Markdown for fast pasting into Twitter or scheduling tools. Whether you're writing from scratch or refining your brand voice, the app is your creative command center for tweet threads.
 
 ## Technical details
-Of course, I can provide a detailed analysis of your codebase. Here's a comprehensive breakdown of the system architecture, libraries, and technical considerations.
 
 ### System Architecture
 (Generated thanks to Gemini 2.5 pro and Repomix)

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { TweetSegment, Suggestion } from "@/types/editor"
+import type { TweetSegment, Suggestion, UserPreferences } from "@/types/editor"
 
 export interface Thread {
   id: string
@@ -369,4 +369,127 @@ export async function applySuggestion(suggestionId: string): Promise<boolean> {
   }
 
   return true
+}
+
+// User Preferences operations
+export async function getUserPreferences(): Promise<UserPreferences | null> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("User not authenticated:", userError)
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .select("*")
+    .eq("user_id", user.id)
+    .single()
+
+  if (error) {
+    // If no preferences exist, create default ones
+    if (error.code === 'PGRST116') {
+      return await createDefaultUserPreferences()
+    }
+    console.error("Error fetching user preferences:", error)
+    return null
+  }
+
+  return data
+}
+
+export async function createDefaultUserPreferences(): Promise<UserPreferences | null> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("User not authenticated:", userError)
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .insert({
+      user_id: user.id,
+      custom_dictionary: [],
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error("Error creating default user preferences:", error)
+    return null
+  }
+
+  return data
+}
+
+export async function updateUserPreferences(updates: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<boolean> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("User not authenticated:", userError)
+    return false
+  }
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update(updates)
+    .eq("user_id", user.id)
+
+  if (error) {
+    console.error("Error updating user preferences:", error)
+    return false
+  }
+
+  return true
+}
+
+// Custom Dictionary operations
+export async function addWordToUserDictionary(word: string): Promise<boolean> {
+  const preferences = await getUserPreferences()
+  if (!preferences) return false
+
+  // Normalize the word (lowercase, trim)
+  const normalizedWord = word.toLowerCase().trim()
+  
+  // Check if word already exists
+  if (preferences.custom_dictionary.includes(normalizedWord)) {
+    return true // Already exists, consider it successful
+  }
+
+  // Add word to dictionary
+  const updatedDictionary = [...preferences.custom_dictionary, normalizedWord]
+  
+  return await updateUserPreferences({
+    custom_dictionary: updatedDictionary
+  })
+}
+
+export async function removeWordFromUserDictionary(word: string): Promise<boolean> {
+  const preferences = await getUserPreferences()
+  if (!preferences) return false
+
+  // Normalize the word (lowercase, trim)
+  const normalizedWord = word.toLowerCase().trim()
+  
+  // Remove word from dictionary
+  const updatedDictionary = preferences.custom_dictionary.filter(w => w !== normalizedWord)
+  
+  return await updateUserPreferences({
+    custom_dictionary: updatedDictionary
+  })
+}
+
+export async function getUserCustomDictionary(): Promise<string[]> {
+  const preferences = await getUserPreferences()
+  return preferences?.custom_dictionary || []
 }

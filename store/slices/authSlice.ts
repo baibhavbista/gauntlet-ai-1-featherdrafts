@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { AppStore, AuthSlice } from '@/types/store'
 import { supabase } from '@/lib/supabase'
+import { getUserCustomDictionary, addWordToUserDictionary, removeWordFromUserDictionary } from '@/lib/database'
 
 export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, get) => ({
   // State
@@ -8,6 +9,8 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
   loading: true,
   error: null,
   isInitialized: false,
+  customDictionary: [],
+  isDictionaryLoaded: false,
 
   // Actions - real implementations
   initialize: async () => {
@@ -40,6 +43,12 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
 
       // Set initial user
       set({ user: session?.user ?? null, loading: false, isInitialized: true })
+      
+      // Load custom dictionary if user is authenticated
+      if (session?.user) {
+        await get().loadCustomDictionary()
+      }
+      
       console.log('[Auth] Initialization complete')
 
       // Listen for auth state changes
@@ -57,8 +66,12 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
         // Handle specific auth events
         if (event === 'SIGNED_OUT') {
           console.log('[Auth] User signed out')
+          // Clear custom dictionary on sign out
+          set({ customDictionary: [], isDictionaryLoaded: false })
         } else if (event === 'SIGNED_IN') {
           console.log('[Auth] User signed in')
+          // Load custom dictionary on sign in
+          await get().loadCustomDictionary()
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('[Auth] Token refreshed')
         }
@@ -75,6 +88,119 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
         loading: false, 
         isInitialized: true 
       })
+    }
+  },
+
+  loadCustomDictionary: async () => {
+    try {
+      const { user } = get()
+      if (!user) {
+        console.log('[Auth] No user, skipping dictionary load')
+        return
+      }
+
+      console.log('[Auth] Loading custom dictionary...')
+      const dictionary = await getUserCustomDictionary()
+      
+      set({ customDictionary: dictionary, isDictionaryLoaded: true })
+      console.log('[Auth] Custom dictionary loaded:', dictionary.length, 'words')
+    } catch (error) {
+      console.error('[Auth] Error loading custom dictionary:', error)
+      set({ customDictionary: [], isDictionaryLoaded: false })
+    }
+  },
+
+  addWordToDictionary: async (word: string) => {
+    try {
+      const { user, customDictionary } = get()
+      if (!user) {
+        console.log('[Auth] No user, cannot add word to dictionary')
+        return false
+      }
+
+      // Normalize word
+      const normalizedWord = word.toLowerCase().trim()
+      
+      // Check if word already exists
+      if (customDictionary.includes(normalizedWord)) {
+        console.log('[Auth] Word already in dictionary:', normalizedWord)
+        return true
+      }
+
+      // Optimistic update
+      const updatedDictionary = [...customDictionary, normalizedWord]
+      set({ customDictionary: updatedDictionary })
+
+      // Sync to server
+      const success = await addWordToUserDictionary(word)
+      
+      if (!success) {
+        // Revert optimistic update on failure
+        set({ customDictionary })
+        console.error('[Auth] Failed to add word to dictionary:', word)
+        return false
+      }
+
+      console.log('[Auth] Word added to dictionary:', normalizedWord)
+      return true
+    } catch (error) {
+      console.error('[Auth] Error adding word to dictionary:', error)
+      return false
+    }
+  },
+
+  removeWordFromDictionary: async (word: string) => {
+    try {
+      const { user, customDictionary } = get()
+      if (!user) {
+        console.log('[Auth] No user, cannot remove word from dictionary')
+        return false
+      }
+
+      // Normalize word
+      const normalizedWord = word.toLowerCase().trim()
+      
+      // Check if word exists
+      if (!customDictionary.includes(normalizedWord)) {
+        console.log('[Auth] Word not in dictionary:', normalizedWord)
+        return true
+      }
+
+      // Optimistic update
+      const updatedDictionary = customDictionary.filter(w => w !== normalizedWord)
+      set({ customDictionary: updatedDictionary })
+
+      // Sync to server
+      const success = await removeWordFromUserDictionary(word)
+      
+      if (!success) {
+        // Revert optimistic update on failure
+        set({ customDictionary })
+        console.error('[Auth] Failed to remove word from dictionary:', word)
+        return false
+      }
+
+      console.log('[Auth] Word removed from dictionary:', normalizedWord)
+      return true
+    } catch (error) {
+      console.error('[Auth] Error removing word from dictionary:', error)
+      return false
+    }
+  },
+
+  syncDictionaryToServer: async () => {
+    try {
+      const { user } = get()
+      if (!user) {
+        console.log('[Auth] No user, cannot sync dictionary')
+        return
+      }
+
+      // Reload dictionary from server to ensure consistency
+      await get().loadCustomDictionary()
+      console.log('[Auth] Dictionary synced from server')
+    } catch (error) {
+      console.error('[Auth] Error syncing dictionary:', error)
     }
   },
 
@@ -169,7 +295,7 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       }
 
       // User state will be updated via the auth state change listener
-      set({ user: null, loading: false, error: null })
+      set({ user: null, loading: false, error: null, customDictionary: [], isDictionaryLoaded: false })
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sign out failed'
@@ -193,5 +319,13 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
 
   setError: (error) => {
     set({ error })
+  },
+
+  setCustomDictionary: (dictionary) => {
+    set({ customDictionary: dictionary })
+  },
+
+  setDictionaryLoaded: (loaded) => {
+    set({ isDictionaryLoaded: loaded })
   },
 }) 

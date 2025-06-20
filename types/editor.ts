@@ -33,3 +33,16 @@ export interface EditorState {
   activeSegmentId: string
   suggestions: Suggestion[]
 }
+
+export interface UserPreferences {
+  id: string
+  user_id: string
+  auto_save_enabled: boolean
+  spell_check_enabled: boolean
+  grammar_check_enabled: boolean
+  auto_fix_enabled: boolean
+  preferred_tone: 'casual' | 'professional' | 'neutral' | 'friendly'
+  custom_dictionary: string[]
+  created_at: string
+  updated_at: string
+}

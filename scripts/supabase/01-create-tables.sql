@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     grammar_check_enabled BOOLEAN DEFAULT TRUE,
     auto_fix_enabled BOOLEAN DEFAULT FALSE,
     preferred_tone VARCHAR(50) DEFAULT 'neutral' CHECK (preferred_tone IN ('casual', 'professional', 'neutral', 'friendly')),
+    custom_dictionary JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

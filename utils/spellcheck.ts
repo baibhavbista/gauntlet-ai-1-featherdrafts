@@ -77,7 +77,7 @@ const socialMediaWords = new Set([
 ])
 
 // Check if a word is correctly spelled
-function isWordCorrect(word: string): boolean {
+function isWordCorrect(word: string, customDictionary: string[] = []): boolean {
   if (!spellChecker) return true
 
   const cleanWord = word.replace(/[^\w']/g, "")
@@ -94,8 +94,12 @@ function isWordCorrect(word: string): boolean {
   // Social media words
   if (socialMediaWords.has(cleanWord.toLowerCase())) return true
 
+  // Check custom dictionary first (normalized to lowercase)
+  const normalizedWord = cleanWord.toLowerCase()
+  if (customDictionary.includes(normalizedWord)) return true
+
   // Check cache first
-  const cacheKey = cleanWord.toLowerCase()
+  const cacheKey = normalizedWord
   if (wordCache.has(cacheKey)) {
     return wordCache.get(cacheKey)!
   }
@@ -135,7 +139,7 @@ function generateSuggestions(word: string): string[] {
   }
 }
 
-export async function checkSpelling(text: string, segmentId: string): Promise<SpellcheckSuggestion[]> {
+export async function checkSpelling(text: string, segmentId: string, customDictionary: string[] = []): Promise<SpellcheckSuggestion[]> {
   // Initialize spell checker if not already done
   if (!isInitialized && !isLoading) {
     await initializeSpellChecker()
@@ -162,7 +166,7 @@ export async function checkSpelling(text: string, segmentId: string): Promise<Sp
     const start = match.index
     const end = start + word.length
 
-    if (!isWordCorrect(word)) {
+    if (!isWordCorrect(word, customDictionary)) {
       const wordSuggestions = generateSuggestions(word)
 
       suggestions.push({

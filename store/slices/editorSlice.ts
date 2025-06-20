@@ -167,8 +167,9 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
       set({ isSpellCheckLoading: true })
 
       try {
+        const { customDictionary } = get()
         const spellCheckPromises = segmentsToCheck.map(segment =>
-          checkSpelling(segment.content, segment.id)
+          checkSpelling(segment.content, segment.id, customDictionary)
         )
 
         const allSpellingSuggestions = await Promise.all(spellCheckPromises)
@@ -239,9 +240,10 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
       try {
         const allChecks = await Promise.all(
           segmentsToCheck.map(async (segment) => {
+            const { customDictionary } = get()
             const [spellingSuggestions, grammarSuggestions] = await Promise.all([
               dictionaryStatus.isInitialized 
-                ? checkSpelling(segment.content, segment.id) 
+                ? checkSpelling(segment.content, segment.id, customDictionary) 
                 : Promise.resolve([]),
               checkGrammar(segment.content, segment.id),
             ])
@@ -290,9 +292,10 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
       })
 
       try {
+        const { customDictionary } = get()
         const [spellingSuggestions, grammarSuggestions] = await Promise.all([
           dictionaryStatus.isInitialized 
-            ? checkSpelling(segment.content, segment.id) 
+            ? checkSpelling(segment.content, segment.id, customDictionary) 
             : Promise.resolve([]),
           checkGrammar(segment.content, segment.id),
         ])

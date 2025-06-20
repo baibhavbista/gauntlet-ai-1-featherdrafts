@@ -69,6 +69,8 @@ export const resetStore = () => {
     loading: true, // Start with loading true for proper initialization
     error: null,
     isInitialized: false,
+    customDictionary: [],
+    isDictionaryLoaded: false,
     threads: [],
     currentThread: null,
     saving: false,
@@ -136,6 +138,8 @@ export const useAuth = () => {
   const loading = useAppStore(state => state.loading)
   const error = useAppStore(state => state.error)
   const isInitialized = useAppStore(state => state.isInitialized)
+  const customDictionary = useAppStore(state => state.customDictionary)
+  const isDictionaryLoaded = useAppStore(state => state.isDictionaryLoaded)
   
   // Action selectors with stable references
   const initialize = useAppStore(state => state.initialize)
@@ -144,18 +148,28 @@ export const useAuth = () => {
   const signInWithOAuth = useAppStore(state => state.signInWithOAuth)
   const signOut = useAppStore(state => state.signOut)
   const clearError = useAppStore(state => state.clearError)
+  const loadCustomDictionary = useAppStore(state => state.loadCustomDictionary)
+  const addWordToDictionary = useAppStore(state => state.addWordToDictionary)
+  const removeWordFromDictionary = useAppStore(state => state.removeWordFromDictionary)
+  const syncDictionaryToServer = useAppStore(state => state.syncDictionaryToServer)
   
   return {
     user,
     loading,
     error,
     isInitialized,
+    customDictionary,
+    isDictionaryLoaded,
     initialize,
     signIn,
     signUp,
     signInWithOAuth,
     signOut,
     clearError,
+    loadCustomDictionary,
+    addWordToDictionary,
+    removeWordFromDictionary,
+    syncDictionaryToServer,
   }
 }
 

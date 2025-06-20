@@ -5,14 +5,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CharacterCounter } from "./character-counter"
 import type { TweetSegment, Suggestion, SpellcheckSuggestion, GrammarSuggestion } from "@/types/editor"
+import { cn } from "@/lib/utils"
+import { X, Plus, AlertCircle, BookOpen } from "lucide-react"
+import { AddToDictionaryButton } from "@/components/ui/add-to-dictionary-button"
+import { useAuth } from "@/store"
 
 type GroupedSpellingSuggestion = SpellcheckSuggestion & {
   occurrences: number
   allSuggestions: string[]
   allIds: string[]
 }
-import { cn } from "@/lib/utils"
-import { X, Plus, AlertCircle, BookOpen } from "lucide-react"
 
 interface TweetSegmentProps {
   segment: TweetSegment
@@ -24,6 +26,7 @@ interface TweetSegmentProps {
   suggestions: Suggestion[]
   onSuggestionApply: (suggestionId: string, replacement: string) => void
   onSuggestionsApply: (suggestionIds: string[], replacement: string) => void
+  onWordAddedToDictionary?: (word: string) => void
   isSpellCheckLoading?: boolean
 }
 
@@ -37,6 +40,7 @@ export function TweetSegmentComponent({
   suggestions,
   onSuggestionApply,
   onSuggestionsApply,
+  onWordAddedToDictionary,
   isSpellCheckLoading = false,
 }: TweetSegmentProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -138,6 +142,7 @@ export function TweetSegmentComponent({
           <textarea
             ref={textareaRef}
             value={localContent}
+            spellCheck={false}
             onChange={(e) => handleContentChange(e.target.value)}
             onFocus={() => onFocus(segment.id)}
             onBlur={() => {
@@ -209,13 +214,13 @@ export function TweetSegmentComponent({
                 return (
                   <div
                     key={suggestion.id}
-                    className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200"
+                    className="group flex items-center gap-2 text-sm bg-red-50 p-2 rounded border-l-2 border-red-200 hover:bg-red-100/50 transition-colors"
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <span className="font-medium text-red-700">"{groupedSuggestion.word}"</span>
                       <span className="text-gray-400">→</span>
                       <div className="flex gap-1 flex-wrap">
-                        {groupedSuggestion.allSuggestions.length === 0 && <span className="text-gray-400">Unknown</span>}
+                        {groupedSuggestion.allSuggestions.length === 0 && <span className="text-gray-400 flex items-center h-7 px-2 text-xs">Unknown</span>}
                         {groupedSuggestion.allSuggestions.map((replacement: string, index: number) => (
                           <Button
                             key={index}
@@ -227,6 +232,19 @@ export function TweetSegmentComponent({
                             {replacement}
                           </Button>
                         ))}
+                        <AddToDictionaryButton
+                          word={groupedSuggestion.word}
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs border-green-200 text-green-700 hover:bg-green-100 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          onAddSuccess={() => {
+                            // Trigger re-check for segments containing this word
+                            onWordAddedToDictionary?.(groupedSuggestion.word)
+                          }}
+                          onAddError={(error) => {
+                            console.error("Failed to add word to dictionary:", error)
+                          }}
+                        />
                       </div>
                     </div>
                     {groupedSuggestion.occurrences > 1 && (
