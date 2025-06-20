@@ -46,6 +46,7 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
   // Local state for AI features
   const [showAiSuccessBanner, setShowAiSuccessBanner] = useState(isAiGenerated)
   const [isAiResplitting, setIsAiResplitting] = useState(false)
+  const [editingTitleValue, setEditingTitleValue] = useState("")
   
   const {
     segments,
@@ -245,16 +246,24 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
             <div className="flex-1">
               {isEditingTitle ? (
                 <Input
-                  value={threadTitle}
-                  onChange={() => {}} // Title is handled by the store
+                  value={editingTitleValue}
+                  onChange={(e) => setEditingTitleValue(e.target.value)}
                   onBlur={() => {
                     setEditingTitle(false)
-                    handleTitleChange(threadTitle)
+                    if (editingTitleValue.trim() && editingTitleValue !== threadTitle) {
+                      handleTitleChange(editingTitleValue.trim())
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       setEditingTitle(false)
-                      handleTitleChange(threadTitle)
+                      if (editingTitleValue.trim() && editingTitleValue !== threadTitle) {
+                        handleTitleChange(editingTitleValue.trim())
+                      }
+                    }
+                    if (e.key === "Escape") {
+                      setEditingTitle(false)
+                      setEditingTitleValue(threadTitle) // Reset to original value
                     }
                   }}
                   className="text-2xl font-bold border-none p-0 h-auto focus-visible:ring-0"
@@ -266,7 +275,10 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setEditingTitle(true)}
+                    onClick={() => {
+                      setEditingTitleValue(threadTitle)
+                      setEditingTitle(true)
+                    }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <Edit2 className="h-4 w-4" />
