@@ -2,26 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { TweetSegmentComponent } from "./tweet-segment"
+import { ThreadHeader } from "./thread-header"
 import {
   Wand2,
   Loader2,
   AlertCircle,
-  ArrowLeft,
-  Edit2,
-  CheckCircle,
-  ChevronDown,
-  Archive,
-  FileText,
   Sparkles,
   X,
   RefreshCw,
 } from "lucide-react"
 import { useAuth, useEditor, useThreads } from "@/store"
 import type { Thread } from "@/types/store"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
 import { PageLoading } from "@/components/ui/loading-spinner"
 import { splitTextToThreads } from "@/lib/ai"
 import { createBulkSegments } from "@/lib/database"
@@ -31,6 +23,340 @@ interface ThreadDetailProps {
   isAiGenerated?: boolean
   onBackToThreads?: () => void
   onBackToLanding?: () => void
+}
+
+interface ThreadContentProps {
+  segments: any[]
+  totalCharacters: number
+  isAiGenerated: boolean
+  showAiSuccessBanner: boolean
+  primaryLoadingState: boolean
+  dictionaryStatus: any
+  handleAiResplit: () => Promise<void>
+  isAiResplitting: boolean
+  setShowAiSuccessBanner: (show: boolean) => void
+  activeSegmentId: string | null
+  updateSegmentContent: (id: string, content: string) => void
+  setActiveSegment: (id: string) => void
+  removeSegment: (id: string) => void
+  addSegment: (afterId: string) => void
+  suggestions: any[]
+  applySuggestion: (suggestionId: string, replacement: string) => void
+  applySuggestions: (suggestionIds: string[], replacement: string) => void
+  handleWordAddedToDictionary: (word: string) => void
+  totalSuggestions: number
+  spellingSuggestions: any[]
+  grammarSuggestions: any[]
+}
+
+interface ThreadSidebarProps {
+  segments: any[]
+  totalCharacters: number
+  totalSuggestions: number
+  spellingSuggestions: any[]
+  grammarSuggestions: any[]
+  currentThread: any
+  isAiGenerated: boolean
+  showAiSuccessBanner: boolean
+}
+
+function ThreadSidebar({
+  segments,
+  totalCharacters,
+  totalSuggestions,
+  spellingSuggestions,
+  grammarSuggestions,
+  currentThread,
+  isAiGenerated,
+  showAiSuccessBanner,
+}: ThreadSidebarProps) {
+  return (
+    <div className="w-80 bg-gray-50 border-l border-gray-200 p-6">
+      <div className="space-y-6">
+        {/* Thread Stats */}
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Thread Stats
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tweets:</span>
+              <span className="font-medium">{segments.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Characters:</span>
+              <span className="font-medium">{totalCharacters}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Avg per Tweet:</span>
+              <span className="font-medium">
+                {segments.length > 0 ? Math.round(totalCharacters / segments.length) : 0}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Status:</span>
+              <span className="font-medium capitalize">
+                {currentThread?.status || 'draft'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Enhancement Status */}
+        {(isAiGenerated || showAiSuccessBanner) && (
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h3 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              AI Enhanced
+            </h3>
+            <p className="text-sm text-blue-700">
+              This thread was generated using AI to optimize tweet structure and flow.
+            </p>
+          </div>
+        )}
+
+        {/* Writing Suggestions Summary */}
+        {totalSuggestions > 0 && (
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+              <Wand2 className="h-4 w-4" />
+              Writing Quality
+            </h3>
+            <div className="space-y-3">
+              {spellingSuggestions.length > 0 && (
+                <div className="flex items-center justify-between p-2 bg-red-50 rounded border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-sm text-red-700">Spelling</span>
+                  </div>
+                  <span className="text-sm font-medium text-red-700">
+                    {spellingSuggestions.length}
+                  </span>
+                </div>
+              )}
+              {grammarSuggestions.length > 0 && (
+                <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-700">Grammar</span>
+                  </div>
+                  <span className="text-sm font-medium text-blue-700">
+                    {grammarSuggestions.length}
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Click highlighted text in tweets to see suggestions
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Thread Information */}
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-3">Thread Info</h3>
+          <div className="space-y-2 text-sm">
+            {currentThread?.created_at && (
+              <div>
+                <span className="text-gray-600">Created:</span>
+                <div className="text-xs text-gray-500 mt-1">
+                  {new Date(currentThread.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            )}
+            {currentThread?.updated_at && (
+              <div>
+                <span className="text-gray-600">Last Updated:</span>
+                <div className="text-xs text-gray-500 mt-1">
+                  {new Date(currentThread.updated_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            )}
+            {currentThread?.published_at && currentThread?.status === 'published' && (
+              <div>
+                <span className="text-gray-600">Published:</span>
+                <div className="text-xs text-gray-500 mt-1">
+                  {new Date(currentThread.published_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ThreadContent({
+  segments,
+  totalCharacters,
+  isAiGenerated,
+  showAiSuccessBanner,
+  primaryLoadingState,
+  dictionaryStatus,
+  handleAiResplit,
+  isAiResplitting,
+  setShowAiSuccessBanner,
+  activeSegmentId,
+  updateSegmentContent,
+  setActiveSegment,
+  removeSegment,
+  addSegment,
+  suggestions,
+  applySuggestion,
+  applySuggestions,
+  handleWordAddedToDictionary,
+  totalSuggestions,
+  spellingSuggestions,
+  grammarSuggestions,
+}: ThreadContentProps) {
+  return (
+    <div className="flex-1 max-w-2xl p-6 pt-0">
+      {/* Tweet thread */}
+      <div className="mb-6">
+        
+
+        <div className="text-sm text-gray-600 mb-4 flex items-center gap-2 flex-wrap">
+          <span>
+            {segments.length} tweet{segments.length !== 1 ? "s" : ""} • {totalCharacters}{" "}
+            characters total
+          </span>
+          
+          {/* Show AI indicator if thread was AI-generated */}
+          {(isAiGenerated || showAiSuccessBanner) && segments.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+              <Sparkles className="h-3 w-3" />
+              AI Enhanced
+            </span>
+          )}
+
+          {/* Only show dictionary loading if no primary loading state is active */}
+          {!primaryLoadingState && dictionaryStatus.isLoading && (
+            <div className="flex items-center gap-1 text-blue-600">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span className="text-xs">Loading dictionary...</span>
+            </div>
+          )}
+
+          {!dictionaryStatus.isInitialized && !dictionaryStatus.isLoading && (
+            <div className="flex items-center gap-1 text-yellow-600">
+              <AlertCircle className="h-3 w-3" />
+              <span className="text-xs">Spellcheck unavailable</span>
+            </div>
+          )}
+        </div>
+
+        {/* AI Success Banner */}
+        {showAiSuccessBanner && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-blue-600" />
+                <div>
+                  <h3 className="font-medium text-gray-900">✨ AI Generated Thread</h3>
+                  <p className="text-sm text-gray-600">
+                    Your content has been intelligently split into {segments.length} tweet segments. 
+                    Feel free to edit and refine each tweet!
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAiResplit}
+                  disabled={isAiResplitting || segments.length === 0}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  {isAiResplitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Re-splitting...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Re-split with AI
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAiSuccessBanner(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {segments.map((segment) => (
+          <TweetSegmentComponent
+            key={segment.id}
+            segment={segment}
+            isActive={segment.id === activeSegmentId}
+            onContentChange={updateSegmentContent}
+            onFocus={setActiveSegment}
+            onDelete={removeSegment}
+            onAddSegment={addSegment}
+            suggestions={suggestions}
+            onSuggestionApply={applySuggestion}
+            onSuggestionsApply={applySuggestions}
+            onWordAddedToDictionary={handleWordAddedToDictionary}
+            isSpellCheckLoading={primaryLoadingState}
+          />
+        ))}
+      </div>
+
+      {totalSuggestions > 0 && (
+        <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-blue-50 rounded-lg border">
+          <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+            <Wand2 className="h-4 w-4" />
+            Writing suggestions found
+          </h3>
+          <div className="flex items-center gap-4 text-sm">
+            {spellingSuggestions.length > 0 && (
+              <div className="flex items-center gap-1 text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                <span>{spellingSuggestions.length} spelling</span>
+              </div>
+            )}
+            {grammarSuggestions.length > 0 && (
+              <div className="flex items-center gap-1 text-blue-600">
+                <AlertCircle className="h-3 w-3" />
+                <span>{grammarSuggestions.length} grammar</span>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-gray-600 mt-1">Click on highlighted text above to see suggestions.</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads, onBackToLanding }: ThreadDetailProps = {}) {
@@ -46,7 +372,6 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
   // Local state for AI features
   const [showAiSuccessBanner, setShowAiSuccessBanner] = useState(isAiGenerated)
   const [isAiResplitting, setIsAiResplitting] = useState(false)
-  const [editingTitleValue, setEditingTitleValue] = useState("")
   
   const {
     segments,
@@ -216,251 +541,58 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4 flex-1">
-            {onBackToThreads && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBackToThreads}
-                className="text-gray-600 hover:text-gray-900"
-                title="Back to Threads"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {onBackToLanding && !onBackToThreads && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBackToLanding}
-                className="text-gray-600 hover:text-gray-900"
-                title="Back to Home"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-
-            <div className="flex-1">
-              {isEditingTitle ? (
-                <Input
-                  value={editingTitleValue}
-                  onChange={(e) => setEditingTitleValue(e.target.value)}
-                  onBlur={() => {
-                    setEditingTitle(false)
-                    if (editingTitleValue.trim() && editingTitleValue !== threadTitle) {
-                      handleTitleChange(editingTitleValue.trim())
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      setEditingTitle(false)
-                      if (editingTitleValue.trim() && editingTitleValue !== threadTitle) {
-                        handleTitleChange(editingTitleValue.trim())
-                      }
-                    }
-                    if (e.key === "Escape") {
-                      setEditingTitle(false)
-                      setEditingTitleValue(threadTitle) // Reset to original value
-                    }
-                  }}
-                  className="text-2xl font-bold border-none p-0 h-auto focus-visible:ring-0"
-                  autoFocus
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold">{threadTitle}</h1>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditingTitleValue(threadTitle)
-                      setEditingTitle(true)
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Show primary loading state with highest priority */}
-            {primaryLoadingState ? (
-              <span className="text-gray-400 text-xs flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {isSaving && "Saving..."}
-                {isUpdating && !isSaving && "Updating..."}
-                {(isSpellCheckLoading || isGrammarCheckLoading) && !isSaving && !isUpdating && "Processing..."}
-              </span>
-            ) : (
-              threadLastSaved && (
-                <span className="text-gray-400 text-xs">Auto-saved {threadLastSaved.toLocaleTimeString()}</span>
-              )
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "min-w-[120px]",
-                    currentThread?.status === "published" && "bg-green-50 text-green-700 border-green-200",
-                    currentThread?.status === "archived" && "bg-gray-50 text-gray-700 border-gray-200",
-                    currentThread?.status === "draft" && "bg-blue-50 text-blue-700 border-blue-200",
-                  )}
-                  disabled={primaryLoadingState}
-                >
-                  {currentThread?.status === "published" && <CheckCircle className="h-4 w-4 mr-2" />}
-                  {currentThread?.status === "archived" && <Archive className="h-4 w-4 mr-2" />}
-                  {currentThread?.status === "draft" && <FileText className="h-4 w-4 mr-2" />}
-                  {currentThread?.status
-                    ? currentThread.status.charAt(0).toUpperCase() + currentThread.status.slice(1)
-                    : "Draft"}
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleStatusChange("draft")}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Draft
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("published")}>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Published
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusChange("archived")}>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archived
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className="text-sm text-gray-600 mb-4 flex items-center gap-2 flex-wrap">
-          <span>
-            {segments.length} tweet{segments.length !== 1 ? "s" : ""} • {totalCharacters}{" "}
-            characters total
-          </span>
-          
-          {/* Show AI indicator if thread was AI-generated */}
-          {(isAiGenerated || showAiSuccessBanner) && segments.length > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-              <Sparkles className="h-3 w-3" />
-              AI Enhanced
-            </span>
-          )}
-
-          {/* Only show dictionary loading if no primary loading state is active */}
-          {!primaryLoadingState && dictionaryStatus.isLoading && (
-            <div className="flex items-center gap-1 text-blue-600">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-xs">Loading dictionary...</span>
-            </div>
-          )}
-
-          {!dictionaryStatus.isInitialized && !dictionaryStatus.isLoading && (
-            <div className="flex items-center gap-1 text-yellow-600">
-              <AlertCircle className="h-3 w-3" />
-              <span className="text-xs">Spellcheck unavailable</span>
-            </div>
-          )}
-        </div>
-
-        {/* AI Success Banner */}
-        {showAiSuccessBanner && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-blue-600" />
-                <div>
-                  <h3 className="font-medium text-gray-900">✨ AI Generated Thread</h3>
-                  <p className="text-sm text-gray-600">
-                    Your content has been intelligently split into {segments.length} tweet segments. 
-                    Feel free to edit and refine each tweet!
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAiResplit}
-                  disabled={isAiResplitting || segments.length === 0}
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                >
-                  {isAiResplitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Re-splitting...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Re-split with AI
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAiSuccessBanner(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+    <div>
+      <ThreadHeader
+          threadTitle={threadTitle}
+          currentThread={currentThread}
+          onBackToThreads={onBackToThreads}
+          onBackToLanding={onBackToLanding}
+          isEditingTitle={isEditingTitle}
+          primaryLoadingState={primaryLoadingState}
+          isSaving={isSaving}
+          isUpdating={isUpdating}
+          isSpellCheckLoading={isSpellCheckLoading}
+          isGrammarCheckLoading={isGrammarCheckLoading}
+          threadLastSaved={threadLastSaved}
+          onTitleChange={handleTitleChange}
+          onStatusChange={handleStatusChange}
+          onSetEditingTitle={setEditingTitle}
+        />
+      <div className="flex min-h-screen">
+        <ThreadContent
+          segments={segments}
+          totalCharacters={totalCharacters}
+          isAiGenerated={isAiGenerated}
+          showAiSuccessBanner={showAiSuccessBanner}
+          primaryLoadingState={primaryLoadingState}
+          dictionaryStatus={dictionaryStatus}
+          handleAiResplit={handleAiResplit}
+          isAiResplitting={isAiResplitting}
+          setShowAiSuccessBanner={setShowAiSuccessBanner}
+          activeSegmentId={activeSegmentId}
+          updateSegmentContent={updateSegmentContent}
+          setActiveSegment={setActiveSegment}
+          removeSegment={removeSegment}
+          addSegment={addSegment}
+          suggestions={suggestions}
+          applySuggestion={applySuggestion}
+          applySuggestions={applySuggestions}
+          handleWordAddedToDictionary={handleWordAddedToDictionary}
+          totalSuggestions={totalSuggestions}
+          spellingSuggestions={spellingSuggestions}
+          grammarSuggestions={grammarSuggestions}
+        />
+        <ThreadSidebar
+          segments={segments}
+          totalCharacters={totalCharacters}
+          totalSuggestions={totalSuggestions}
+          spellingSuggestions={spellingSuggestions}
+          grammarSuggestions={grammarSuggestions}
+          currentThread={currentThread}
+          isAiGenerated={isAiGenerated}
+          showAiSuccessBanner={showAiSuccessBanner}
+        />
       </div>
-
-      <div className="space-y-4">
-        {segments.map((segment) => (
-          <TweetSegmentComponent
-            key={segment.id}
-            segment={segment}
-            isActive={segment.id === activeSegmentId}
-            onContentChange={updateSegmentContent}
-            onFocus={setActiveSegment}
-            onDelete={removeSegment}
-            onAddSegment={addSegment}
-            suggestions={suggestions}
-            onSuggestionApply={applySuggestion}
-            onSuggestionsApply={applySuggestions}
-            onWordAddedToDictionary={handleWordAddedToDictionary}
-            isSpellCheckLoading={primaryLoadingState}
-          />
-        ))}
-      </div>
-
-      {totalSuggestions > 0 && (
-        <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-blue-50 rounded-lg border">
-          <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-            <Wand2 className="h-4 w-4" />
-            Writing suggestions found
-          </h3>
-          <div className="flex items-center gap-4 text-sm">
-            {spellingSuggestions.length > 0 && (
-              <div className="flex items-center gap-1 text-red-600">
-                <AlertCircle className="h-3 w-3" />
-                <span>{spellingSuggestions.length} spelling</span>
-              </div>
-            )}
-            {grammarSuggestions.length > 0 && (
-              <div className="flex items-center gap-1 text-blue-600">
-                <AlertCircle className="h-3 w-3" />
-                <span>{grammarSuggestions.length} grammar</span>
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-gray-600 mt-1">Click on highlighted text above to see suggestions.</p>
-        </div>
-      )}
     </div>
   )
 } 
