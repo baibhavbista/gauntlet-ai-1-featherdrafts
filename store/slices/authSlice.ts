@@ -164,6 +164,11 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       // User state will be updated via the auth state change listener
       set({ user: null, loading: false, error: null })
 
+      // Redirect to home page after successful logout
+      if (typeof window !== 'undefined') {
+        window.location.href = '/'
+      }
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sign out failed'
       set({ error: errorMessage, loading: false })
