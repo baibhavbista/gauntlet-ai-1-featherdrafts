@@ -33,7 +33,11 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
     currentThread, 
     updateThread,
     lastSaved: threadLastSaved,
+    isLoading: isThreadLoading,
+    isUpdating,
   } = useThreads()
+
+  console.log("isThreadLoading", isThreadLoading)
   
   const {
     segments,
@@ -100,15 +104,32 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
   const grammarSuggestions = suggestions.filter((s) => s.type === "grammar")
   const totalSuggestions = suggestions.length
 
-  // Show loading spinner while checking auth
-  if (loading) {
+  // Show loading spinner while checking auth or loading thread
+  if (loading || isThreadLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="bg-blue-600 p-3 rounded-lg mb-4 mx-auto w-fit">
             <Feather className="h-8 w-8 text-white animate-spin" />
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">
+            {loading ? "Loading..." : "Loading thread..."}
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  // Show loading spinner if we have a threadId but no currentThread yet (prevents flash of empty content)
+  // This covers the case where we're transitioning between threads or the thread hasn't loaded yet
+  if (threadId && !currentThread) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="bg-blue-600 p-3 rounded-lg mb-4 mx-auto w-fit">
+            <Feather className="h-8 w-8 text-white animate-spin" />
+          </div>
+          <p className="text-gray-600">Loading thread...</p>
         </div>
       </main>
     )
@@ -177,11 +198,14 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
           </div>
 
           <div className="flex items-center gap-2">
-            {threadLastSaved && !isSaving && (
+            {threadLastSaved && !isSaving && !isUpdating && (
               <span className="text-gray-400 text-xs">Auto-saved {threadLastSaved.toLocaleTimeString()}</span>
             )}
-            {isSaving && (
-              <span className="text-gray-400 text-xs">Saving ...</span>
+            {(isSaving || isUpdating) && (
+              <span className="text-gray-400 text-xs flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {isSaving ? "Saving..." : "Updating..."}
+              </span>
             )}
             {totalSuggestions > 0 && (
               <Button
