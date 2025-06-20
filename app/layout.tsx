@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'FeatherDrafts',
   description: 'AI-powered Twitter thread creator with grammar and spell checking',
+    generator: 'v0.dev'
 }
 
 export default function RootLayout({

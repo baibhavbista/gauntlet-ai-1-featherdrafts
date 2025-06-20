@@ -190,4 +190,4 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set, get)
            state.isDeleteThreadDialogOpen || 
            state.isSettingsDialogOpen
   },
-}) 
+})

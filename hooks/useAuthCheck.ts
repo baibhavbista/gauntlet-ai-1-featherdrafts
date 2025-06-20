@@ -25,4 +25,4 @@ export function useAuthCheck(options: UseAuthCheckOptions = {}) {
     isAuthenticated: !!user,
     shouldRender: isInitialized && (requireAuth ? !!user : true)
   }
-} 
+}

@@ -595,4 +595,4 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
       </div>
     </div>
   )
-} 
+}

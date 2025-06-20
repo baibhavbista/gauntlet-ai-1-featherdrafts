@@ -10,7 +10,7 @@ Consolidated all loading screens to use the existing `PageLoading` component fro
 
 ### ✅ Before: Duplicate Loading Code
 Each file had similar loading screen implementations:
-```tsx
+\`\`\`tsx
 // ❌ Duplicate code pattern
 return (
   <main className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -20,14 +20,14 @@ return (
     </div>
   </main>
 )
-```
+\`\`\`
 
 ### ✅ After: Reusable Component
 Now using the centralized component:
-```tsx
+\`\`\`tsx
 // ✅ Clean, reusable code
 return <PageLoading text="Loading..." />
-```
+\`\`\`
 
 ## Updated Files
 
@@ -109,7 +109,7 @@ The existing `components/ui/loading-spinner.tsx` provides:
 
 ## Usage Examples
 
-```tsx
+\`\`\`tsx
 // Basic page loading
 <PageLoading text="Loading..." />
 
@@ -121,7 +121,7 @@ The existing `components/ui/loading-spinner.tsx` provides:
 
 // Inline loading spinner
 <LoadingSpinner size="sm" text="Saving..." />
-```
+\`\`\`
 
 ## Future Improvements
 
@@ -168,4 +168,4 @@ This refactoring demonstrates the power of the DRY principle:
 - **Easier maintenance**
 - **Better performance**
 
-The codebase is now more maintainable, consistent, and follows React best practices for component reusability. 
+The codebase is now more maintainable, consistent, and follows React best practices for component reusability.

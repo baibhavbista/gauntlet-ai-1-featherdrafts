@@ -108,4 +108,4 @@ export function SpellingErrorPopover({
       </DropdownMenuContent>
     </DropdownMenu>
   )
-} 
+}

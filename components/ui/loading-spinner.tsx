@@ -76,4 +76,4 @@ export function PageLoading({
       <LoadingSpinner variant={variant} size="lg" text={text} />
     </div>
   )
-} 
+}

@@ -113,4 +113,4 @@ export default function ThreadError({ error, reset }: ThreadErrorProps) {
       </Card>
     </div>
   )
-} 
+}

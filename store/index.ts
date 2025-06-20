@@ -350,4 +350,4 @@ export const useStoreDevtools = () => {
 
 // Export the main store for direct access when needed
 export { useAppStore as useStore }
-export default useAppStore 
+export default useAppStore

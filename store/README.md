@@ -11,7 +11,7 @@ The Zustand store has been successfully set up and authentication has been migra
 
 ### 📁 Store Architecture
 
-```
+\`\`\`
 store/
 ├── index.ts              # Main store with persistence
 ├── slices/
@@ -21,7 +21,7 @@ store/
 │   ├── navigationSlice.ts # Navigation state & actions
 │   └── uiSlice.ts        # UI state & actions
 └── README.md             # This file
-```
+\`\`\`
 
 ### 🔧 Store Features
 
@@ -114,7 +114,7 @@ store/
 
 ### 🔍 Store Usage
 
-```typescript
+\`\`\`typescript
 // Import the store hooks
 import { useAuth, useThreads, useEditor, useNavigation, useUI } from '@/store'
 
@@ -128,7 +128,7 @@ function MyComponent() {
   
   // Use the state and actions
 }
-```
+\`\`\`
 
 ### 🛡️ Benefits Over Current Implementation
 
@@ -276,7 +276,7 @@ function MyComponent() {
 
 ### **Final Architecture Summary:**
 
-```mermaid
+\`\`\`mermaid
 graph TD
     A[App Layout] --> B[Error Boundary]
     B --> C[Theme Provider]
@@ -298,7 +298,7 @@ graph TD
     P[DevTools] -.-> E
     Q[Performance Monitor] -.-> E
     R[Error Boundary] -.-> D
-```
+\`\`\`
 
 ### **✅ All 6 Phases Complete:**
 
@@ -318,4 +318,4 @@ graph TD
 - **Development Experience**: Enhanced with DevTools and monitoring
 - **Maintainability**: Clean, predictable architecture established
 
-The FeatherDrafts application now has a bulletproof, optimized Zustand architecture that completely eliminates the original race conditions while providing excellent development tools and error handling. 
+The FeatherDrafts application now has a bulletproof, optimized Zustand architecture that completely eliminates the original race conditions while providing excellent development tools and error handling.

@@ -33,18 +33,18 @@ User requested to change all loading screens from longer text like "Please wait 
 ### ✅ Consistent Implementation
 
 **Before (inconsistent):**
-```tsx
+\`\`\`tsx
 <PageLoading text="Loading..." />
 <PageLoading text="Loading thread..." />
 <PageLoading text="Redirecting..." />
 <PageLoading text="Completing sign in..." />
-```
+\`\`\`
 
 **After (consistent):**
-```tsx
+\`\`\`tsx
 <PageLoading />  // All use default "Loading..."
 <PageLoading variant="branded" />  // Thread detail with branding
-```
+\`\`\`
 
 ### ✅ Preserved Contextual Messages
 
@@ -75,13 +75,13 @@ These are different from full-page loading screens and provide specific context 
 
 ### Default Behavior
 The `PageLoading` component defaults to:
-```tsx
+\`\`\`tsx
 text = "Loading..."
 variant = "branded"
-```
+\`\`\`
 
 ### Usage Patterns
-```tsx
+\`\`\`tsx
 // Standard loading (uses default "Loading...")
 <PageLoading />
 
@@ -89,7 +89,7 @@ variant = "branded"
 <PageLoading variant="branded" />
 
 // No need to specify text unless truly different context needed
-```
+\`\`\`
 
 ### Component Hierarchy
 - `PageLoading` → Full page loading wrapper
@@ -123,4 +123,4 @@ variant = "branded"
 ### Maintenance
 - Default text is centralized in `PageLoading` component
 - Easy to update globally if needed
-- Consistent pattern for all future loading screens 
+- Consistent pattern for all future loading screens

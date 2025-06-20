@@ -8,18 +8,18 @@ This happens when calling `router.push()` or `router.replace()` directly in the 
 ## Root Cause
 The issue was in these files where we were calling router methods directly in the render:
 
-```tsx
+\`\`\`tsx
 // ❌ BAD - Calling router.push in render
 if (user) {
   router.push('/threads') // This causes the error
   return null
 }
-```
+\`\`\`
 
 ## Solution
 Move all router navigation calls to `useEffect` hooks to avoid setState during render:
 
-```tsx
+\`\`\`tsx
 // ✅ GOOD - Calling router.push in useEffect
 useEffect(() => {
   if (isInitialized && user) {
@@ -30,7 +30,7 @@ useEffect(() => {
 if (user) {
   return null // Just return null, useEffect handles redirect
 }
-```
+\`\`\`
 
 ## Files Fixed
 

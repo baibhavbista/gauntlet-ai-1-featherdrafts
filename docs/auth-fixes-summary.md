@@ -126,4 +126,4 @@
 - Add CSRF protection for auth callbacks
 - Implement rate limiting for login attempts
 - Add session timeout handling
-- Consider implementing refresh token rotation 
+- Consider implementing refresh token rotation

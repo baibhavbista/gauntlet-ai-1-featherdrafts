@@ -552,4 +552,4 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       return matchesSearch && matchesStatus
     })
   },
-}) 
+})

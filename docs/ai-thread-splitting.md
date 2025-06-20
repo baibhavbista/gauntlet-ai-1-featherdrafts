@@ -22,9 +22,9 @@ The AI Thread Splitting feature allows users to paste long-form content and auto
 
 ### Environment Variables
 Add the following to your `.env.local` file:
-```bash
+\`\`\`bash
 OPENAI_API_KEY=your_openai_api_key_here
-```
+\`\`\`
 
 ### Features Included
 1. **Smart Toggle**: Easy ON/OFF toggle for AI splitting mode
@@ -120,4 +120,4 @@ Consider adding analytics to track:
 - Batch re-split for multiple threads
 - Custom prompt templates
 - Analytics dashboard for AI usage
-- A/B testing different AI prompts 
+- A/B testing different AI prompts

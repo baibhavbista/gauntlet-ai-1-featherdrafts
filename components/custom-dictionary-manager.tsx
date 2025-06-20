@@ -177,4 +177,4 @@ export function CustomDictionaryManager() {
       </CardContent>
     </Card>
   )
-} 
+}

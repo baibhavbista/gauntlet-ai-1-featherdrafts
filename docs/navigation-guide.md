@@ -8,20 +8,20 @@ The app has been refactored from state-based navigation to URL-based navigation 
 
 ## Route Structure
 
-```
+\`\`\`
 /                    # Landing page (public)
 /login              # Login form (public, redirects if authenticated)  
 /signup             # Signup form (public, redirects if authenticated)
 /threads            # Thread dashboard (protected)
 /thread/[threadId]  # Thread editor (protected)
 /auth/callback      # OAuth callback (handles redirects)
-```
+\`\`\`
 
 ## New Navigation Pattern
 
 ### Use the `useNavigation` Hook (Recommended)
 
-```typescript
+\`\`\`typescript
 import { useNavigation } from '@/hooks'
 
 function MyComponent() {
@@ -33,11 +33,11 @@ function MyComponent() {
 
   return <button onClick={handleClick}>Go to Thread</button>
 }
-```
+\`\`\`
 
 ### Available Navigation Methods
 
-```typescript
+\`\`\`typescript
 const {
   // Basic navigation
   navigateToThreads,       // () => void
@@ -57,11 +57,11 @@ const {
   // Direct router access
   router,                  // NextRouter
 } = useNavigation()
-```
+\`\`\`
 
 ### Direct Router Usage (Alternative)
 
-```typescript
+\`\`\`typescript
 import { useRouter } from 'next/navigation'
 
 function MyComponent() {
@@ -73,13 +73,13 @@ function MyComponent() {
 
   return <button onClick={handleClick}>Go to Thread</button>
 }
-```
+\`\`\`
 
 ## Getting Current Route Information
 
 ### Use Next.js Hooks
 
-```typescript
+\`\`\`typescript
 import { usePathname, useParams, useSearchParams } from 'next/navigation'
 
 function MyComponent() {
@@ -89,11 +89,11 @@ function MyComponent() {
 
   return <div>Current path: {pathname}</div>
 }
-```
+\`\`\`
 
 ### Route-Specific Patterns
 
-```typescript
+\`\`\`typescript
 // In a thread detail page
 function ThreadDetailPage() {
   const params = useParams()
@@ -113,7 +113,7 @@ function LoginPage() {
     router.push(destination)
   }
 }
-```
+\`\`\`
 
 ## Route Protection
 
@@ -127,7 +127,7 @@ Route protection is handled by middleware (`middleware.ts`):
 
 The navigation store has been simplified but is still available for backward compatibility:
 
-```typescript
+\`\`\`typescript
 import { useNavigationStore } from '@/store'
 
 function MyComponent() {
@@ -141,13 +141,13 @@ function MyComponent() {
     navigateToThread,   // Use useNavigation hook instead
   } = useNavigationStore()
 }
-```
+\`\`\`
 
 ## Migration Guide
 
 ### Before (State-based)
 
-```typescript
+\`\`\`typescript
 import { useNavigation } from '@/store'
 
 function MyComponent() {
@@ -161,11 +161,11 @@ function MyComponent() {
     navigateToThreads()
   }
 }
-```
+\`\`\`
 
 ### After (URL-based)
 
-```typescript
+\`\`\`typescript
 import { usePathname } from 'next/navigation'
 import { useNavigation } from '@/hooks'
 
@@ -181,7 +181,7 @@ function MyComponent() {
     navigateToThreads()
   }
 }
-```
+\`\`\`
 
 ## Best Practices
 
@@ -195,7 +195,7 @@ function MyComponent() {
 
 ### Thread List with Navigation
 
-```typescript
+\`\`\`typescript
 import { useNavigation } from '@/hooks'
 
 function ThreadList() {
@@ -214,11 +214,11 @@ function ThreadList() {
     </div>
   )
 }
-```
+\`\`\`
 
 ### Protected Component
 
-```typescript
+\`\`\`typescript
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/store'
 
@@ -234,4 +234,4 @@ function ProtectedComponent() {
   
   return <div>Welcome to {pathname}</div>
 }
-``` 
+\`\`\`

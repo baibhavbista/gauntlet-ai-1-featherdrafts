@@ -1,2 +1,2 @@
 export { useNavigation } from './useNavigation'
-export { useErrorHandler, type AppError } from './useErrorHandler' 
+export { useErrorHandler, type AppError } from './useErrorHandler'

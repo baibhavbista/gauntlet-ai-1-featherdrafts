@@ -52,4 +52,4 @@ export default function SignupPage() {
       <SignupPageContent />
     </Suspense>
   )
-} 
+}

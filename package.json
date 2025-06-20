@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "next dev",
+    "lint": "next lint",
+    "start": "next start"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -28,8 +28,8 @@
     "@radix-ui/react-radio-group": "1.2.2",
     "@radix-ui/react-scroll-area": "1.2.2",
     "@radix-ui/react-select": "2.1.4",
-    "@radix-ui/react-separator": "1.1.1",
-    "@radix-ui/react-slider": "1.2.2",
+    "@radix-ui/react-separator": "latest",
+    "@radix-ui/react-slider": "latest",
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-switch": "1.1.2",
     "@radix-ui/react-tabs": "1.1.2",
@@ -50,7 +50,7 @@
     "next": "15.2.4",
     "next-themes": "latest",
     "nspell": "latest",
-    "openai": "^5.5.1",
+    "openai": "latest",
     "react": "^19",
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
@@ -60,10 +60,12 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "twitter-text": "^3.1.0",
+    "twitter-text": "latest",
+    "use-sync-external-store": "latest",
     "vaul": "^0.9.6",
     "write-good": "latest",
-    "zod": "^3.24.1",
+    "ws": "latest",
+    "zod": "latest",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

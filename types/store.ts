@@ -302,4 +302,4 @@ export interface StoreInitialState {
   editor: EditorState
   navigation: NavigationState
   ui: UIState
-} 
+}

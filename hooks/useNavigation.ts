@@ -68,4 +68,4 @@ export function useNavigation() {
     // Direct router access for advanced use cases
     router,
   }
-} 
+}

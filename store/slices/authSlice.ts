@@ -328,4 +328,4 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
   setDictionaryLoaded: (loaded) => {
     set({ isDictionaryLoaded: loaded })
   },
-}) 
+})

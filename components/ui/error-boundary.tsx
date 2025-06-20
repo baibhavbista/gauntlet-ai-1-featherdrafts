@@ -107,4 +107,4 @@ export const useErrorHandler = () => {
     console.error('Error handled:', error, errorInfo)
     throw error
   }, [])
-} 
+}

@@ -75,4 +75,4 @@ export function useErrorHandler() {
     handleAsyncError,
     createErrorThrower,
   }
-} 
+}
