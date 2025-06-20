@@ -12,13 +12,17 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
   // Actions - real implementations
   initialize: async () => {
     try {
+      console.log('[Auth] Starting initialization...')
+      
       // Prevent multiple initializations
       const { isInitialized } = get()
       if (isInitialized) {
+        console.log('[Auth] Already initialized, skipping')
         return
       }
 
       set({ loading: true, error: null })
+      console.log('[Auth] Set loading state')
 
       // Get initial session
       const {
@@ -27,19 +31,22 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       } = await supabase.auth.getSession()
 
       if (sessionError) {
-        console.error('Session error:', sessionError)
+        console.error('[Auth] Session error:', sessionError)
         set({ error: sessionError.message, user: null, loading: false, isInitialized: true })
         return
       }
 
+      console.log('[Auth] Session retrieved:', session?.user?.email || 'No user')
+
       // Set initial user
       set({ user: session?.user ?? null, loading: false, isInitialized: true })
+      console.log('[Auth] Initialization complete')
 
       // Listen for auth state changes
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
+        console.log('[Auth] State changed:', event, session?.user?.email || 'No user')
         
         set({ 
           user: session?.user ?? null, 
@@ -49,11 +56,11 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
 
         // Handle specific auth events
         if (event === 'SIGNED_OUT') {
-          console.log('User signed out')
+          console.log('[Auth] User signed out')
         } else if (event === 'SIGNED_IN') {
-          console.log('User signed in')
+          console.log('[Auth] User signed in')
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed')
+          console.log('[Auth] Token refreshed')
         }
       })
 
@@ -62,7 +69,7 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       // for proper cleanup, but Zustand handles this differently
 
     } catch (error) {
-      console.error('Auth initialization error:', error)
+      console.error('[Auth] Initialization error:', error)
       set({ 
         error: error instanceof Error ? error.message : 'Authentication initialization failed', 
         loading: false, 
@@ -163,11 +170,6 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
 
       // User state will be updated via the auth state change listener
       set({ user: null, loading: false, error: null })
-
-      // Redirect to home page after successful logout
-      if (typeof window !== 'undefined') {
-        window.location.href = '/'
-      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Sign out failed'

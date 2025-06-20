@@ -1,35 +1,40 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
-import { useAuth } from "@/store"
+import { useEffect, type ReactNode } from "react"
+import { useAppStore } from "@/store"
+import { PageLoading } from "@/components/ui/loading-spinner"
 
 interface AuthProviderProps {
   children: ReactNode
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { initialize, isInitialized } = useAuth()
-  const [initTimeout, setInitTimeout] = useState(false)
+  const isInitialized = useAppStore(state => state.isInitialized)
+  const initialize = useAppStore(state => state.initialize)
 
   useEffect(() => {
-    if (!isInitialized) {
-      initialize().catch(console.error)
-      
-      // Fallback timeout to prevent infinite loading
-      const timeout = setTimeout(() => {
-        if (!isInitialized) {
-          console.warn("Auth initialization timed out")
-          setInitTimeout(true)
+    let cancelled = false
+    
+    const initAuth = async () => {
+      if (!isInitialized && !cancelled) {
+        try {
+          await initialize()
+        } catch (error) {
+          console.error('Auth initialization failed:', error)
         }
-      }, 10000) // 10 second timeout
-
-      return () => clearTimeout(timeout)
+      }
     }
-  }, [initialize, isInitialized])
 
-  // Render children if initialized or if timeout occurred
-  if (isInitialized || initTimeout) {
-    return <>{children}</>
+    initAuth()
+    
+    return () => {
+      cancelled = true
+    }
+  }, []) // Remove dependencies to prevent infinite loop
+
+  // Show loading screen until auth is initialized
+  if (!isInitialized) {
+    return <PageLoading />
   }
 
   return <>{children}</>

@@ -36,8 +36,6 @@ export function ThreadDetail({ threadId, onBackToThreads, onBackToLanding }: Thr
     isLoading: isThreadLoading,
     isUpdating,
   } = useThreads()
-
-  console.log("isThreadLoading", isThreadLoading)
   
   const {
     segments,

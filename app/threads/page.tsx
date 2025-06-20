@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { ThreadList } from "@/components/thread-list"
 import { useAuth } from "@/store"
 import { PageLoading } from "@/components/ui/loading-spinner"
@@ -9,13 +9,15 @@ import { PageLoading } from "@/components/ui/loading-spinner"
 export default function ThreadsPage() {
   const { user, isInitialized } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   // Handle redirect for unauthenticated users
   useEffect(() => {
     if (isInitialized && !user) {
-      router.replace('/login')
+      const redirectTo = encodeURIComponent(pathname)
+      router.replace(`/login?redirectTo=${redirectTo}`)
     }
-  }, [isInitialized, user, router])
+  }, [isInitialized, user, router, pathname])
 
   // Show loading while auth is initializing
   if (!isInitialized) {

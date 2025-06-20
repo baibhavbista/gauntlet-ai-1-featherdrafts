@@ -41,6 +41,12 @@ export const useAppStore = create<AppStore>()(
           // - current thread content (will be loaded fresh)
           // - suggestions (will be regenerated)
           // - view state (now handled by URL)
+          
+          // Explicitly exclude all auth-related state to prevent persistence conflicts
+          // user: undefined,
+          // loading: undefined,
+          // error: undefined,
+          // isInitialized: undefined,
         }),
         
         // Skip merge function for now to avoid TypeScript complexity
@@ -124,20 +130,34 @@ export const initializeStore = async () => {
 // Store initialization moved to app/page.tsx useEffect
 
 // Selector hooks - use direct store access to avoid infinite loops
-export const useAuth = () => ({
-  user: useAppStore(state => state.user),
-  loading: useAppStore(state => state.loading),
-  error: useAppStore(state => state.error),
-  isInitialized: useAppStore(state => state.isInitialized),
+export const useAuth = () => {
+  // State selectors
+  const user = useAppStore(state => state.user)
+  const loading = useAppStore(state => state.loading)
+  const error = useAppStore(state => state.error)
+  const isInitialized = useAppStore(state => state.isInitialized)
   
-  // Actions
-  initialize: useAppStore(state => state.initialize),
-  signIn: useAppStore(state => state.signIn),
-  signUp: useAppStore(state => state.signUp),
-  signInWithOAuth: useAppStore(state => state.signInWithOAuth),
-  signOut: useAppStore(state => state.signOut),
-  clearError: useAppStore(state => state.clearError),
-})
+  // Action selectors with stable references
+  const initialize = useAppStore(state => state.initialize)
+  const signIn = useAppStore(state => state.signIn)
+  const signUp = useAppStore(state => state.signUp)
+  const signInWithOAuth = useAppStore(state => state.signInWithOAuth)
+  const signOut = useAppStore(state => state.signOut)
+  const clearError = useAppStore(state => state.clearError)
+  
+  return {
+    user,
+    loading,
+    error,
+    isInitialized,
+    initialize,
+    signIn,
+    signUp,
+    signInWithOAuth,
+    signOut,
+    clearError,
+  }
+}
 
 export const useThreads = () => ({
   // State

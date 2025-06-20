@@ -192,7 +192,15 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
                 <User className="h-4 w-4" />
                 <span>{user.user_metadata?.full_name || user.email}</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={signOut} className="text-gray-500 hover:text-gray-700">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={async () => {
+                  await signOut()
+                  window.location.href = '/'
+                }} 
+                className="text-gray-500 hover:text-gray-700"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
