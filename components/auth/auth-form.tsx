@@ -53,7 +53,8 @@ export function AuthForm({ error: urlError, message: urlMessage }: AuthFormProps
     console.log('[AuthForm] Auth state:', { authError, authLoading, localLoading })
   }, [authError, authLoading, localLoading])
 
-  const isLoading = authLoading || localLoading
+  const isLoading =  //authLoading || 
+    localLoading
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,8 +105,6 @@ export function AuthForm({ error: urlError, message: urlMessage }: AuthFormProps
   const handleBackToHome = () => {
     router.push("/")
   }
-
-  console.log('[AuthForm] Auth state:', { authError, authLoading, localLoading })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">

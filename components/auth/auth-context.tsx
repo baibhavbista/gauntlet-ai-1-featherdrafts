@@ -34,11 +34,29 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
   const router = useRouter()
   const supabase = createClient()
 
+  // Memoized clear error function to prevent unnecessary re-renders
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
   useEffect(() => {
+    let mounted = true
+    
+    // Safety timeout to prevent loading from getting stuck
+    const loadingTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('[Auth] Loading timeout reached, forcing loading to false')
+        setLoading(false)
+        setIsInitialized(true)
+      }
+    }, 10000) // 10 second timeout
+    
     // Get initial session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (!mounted) return
         
         console.log('[Auth] Initial session check:', { 
           hasSession: !!session, 
@@ -58,10 +76,16 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
         setUser(session?.user ?? null)
       } catch (err) {
         console.error('[Auth] Initialization error:', err)
-        // Don't set error for initialization - user might still be authenticating
+        if (mounted) {
+          // Don't set error for initialization - user might still be authenticating
+          setError('Failed to initialize authentication')
+        }
       } finally {
-        setLoading(false)
-        setIsInitialized(true)
+        if (mounted) {
+          setLoading(false)
+          setIsInitialized(true)
+          clearTimeout(loadingTimeout) // Clear timeout when initialization completes
+        }
       }
     }
 
@@ -70,12 +94,17 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('[Auth] State changed:', event, session?.user?.email || 'No user', 'current error:', error)
+        if (!mounted) return
+        
+        console.log('[Auth] State changed:', event, session?.user?.email || 'No user')
         
         setUser(session?.user ?? null)
-        setLoading(false)
         
-        // Only clear errors on successful auth events with a valid session
+        // Always set loading to false when auth state changes
+        setLoading(false)
+        clearTimeout(loadingTimeout) // Clear timeout when auth state changes
+        
+        // Clear errors on successful auth events with a valid session
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           console.log('[Auth] Clearing error due to successful auth event')
           setError(null)
@@ -93,10 +122,13 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
       }
     )
 
+    // Cleanup function
     return () => {
+      mounted = false
+      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
-  }, []) // Empty dependency array since supabase client is stable
+  }, []) // Keep empty dependency array since supabase client is stable
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -214,10 +246,6 @@ export function AuthContextProvider({ children }: AuthProviderProps) {
       setLoading(false)
     }
   }
-
-  const clearError = useCallback(() => {
-    setError(null)
-  }, [])
 
   const value = {
     user,
