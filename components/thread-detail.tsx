@@ -12,7 +12,9 @@ import {
   X,
   RefreshCw,
 } from "lucide-react"
-import { useAuth, useEditor, useThreads } from "@/store"
+import { useAuthContext } from "./auth/auth-context"
+import { useEditor, useThreads } from "@/store"
+import { useRouter } from "next/navigation"
 import type { Thread } from "@/types/store"
 import { PageLoading } from "@/components/ui/loading-spinner"
 import { splitTextToThreads } from "@/lib/ai"
@@ -21,8 +23,6 @@ import { createBulkSegments } from "@/lib/database"
 interface ThreadDetailProps {
   threadId?: string | null
   isAiGenerated?: boolean
-  onBackToThreads?: () => void
-  onBackToLanding?: () => void
 }
 
 interface ThreadContentProps {
@@ -335,8 +335,9 @@ function ThreadContent({
   )
 }
 
-export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads, onBackToLanding }: ThreadDetailProps = {}) {
-  const { user, signOut, isInitialized } = useAuth()
+export function ThreadDetail({ threadId, isAiGenerated = false }: ThreadDetailProps = {}) {
+  const router = useRouter()
+  const { user, signOut, isInitialized } = useAuthContext()
   const { 
     currentThread, 
     updateThread,
@@ -521,8 +522,6 @@ export function ThreadDetail({ threadId, isAiGenerated = false, onBackToThreads,
       <ThreadHeader
           threadTitle={threadTitle}
           currentThread={currentThread}
-          onBackToThreads={onBackToThreads}
-          onBackToLanding={onBackToLanding}
           isEditingTitle={isEditingTitle}
           primaryLoadingState={primaryLoadingState}
           isSaving={isSaving}

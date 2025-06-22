@@ -1,41 +1,135 @@
-"use client"
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
-import { PageLoading } from "@/components/ui/loading-spinner"
+export default async function AuthCallback({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const next = params.next ?? params.redirect_to ?? '/threads'
+  const error = params.error as string
+  const code = params.code as string
+  
+  // Extract token and type from URL fragments (Supabase sometimes uses these)
+  const token_hash = params.token_hash as string
+  const type = params.type as string
+  const access_token = params.access_token as string
+  const refresh_token = params.refresh_token as string
 
-export default function AuthCallback() {
-  const router = useRouter()
+  console.log('Auth callback - Environment check:', {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  })
+  
+  console.log('Auth callback - Received params:', {
+    hasCode: !!code,
+    hasError: !!error,
+    hasTokenHash: !!token_hash,
+    hasAccessToken: !!access_token,
+    hasRefreshToken: !!refresh_token,
+    type: type,
+    allParamKeys: Object.keys(params)
+  })
 
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        // Handle hash-based auth callback for OAuth
-        const { data, error } = await supabase.auth.getSession()
+  // If there's an error parameter, redirect to login with error
+  if (error) {
+    console.log('Auth callback error from params:', error)
+    redirect('/login?error=' + encodeURIComponent(error))
+  }
 
-        if (error) {
-          console.error("Auth callback error:", error)
-          router.push("/login?error=" + encodeURIComponent(error.message))
-          return
-        }
+  const supabase = await createClient()
 
-        if (data.session) {
-          // Give a moment for the auth state to propagate
-          setTimeout(() => {
-            router.push("/threads")
-          }, 200)
-        } else {
-          router.push("/login")
-        }
-      } catch (error) {
-        console.error("Unexpected error in auth callback:", error)
-        router.push("/login")
+  // Try code exchange first (PKCE flow)
+  if (code) {
+    try {
+      console.log('Auth callback - Attempting code exchange')
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      
+      if (!exchangeError && data?.user) {
+        console.log('Auth callback - Code exchange successful')
+        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+      } else {
+        console.error('Auth callback - Code exchange failed:', exchangeError?.message)
       }
+    } catch (err) {
+      // Only catch non-redirect exceptions
+      if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+        throw err // Re-throw redirect errors
+      }
+      console.error('Auth callback - Code exchange exception:', err)
     }
+  }
 
-    handleAuthCallback()
-  }, [router])
+  // Try token hash verification (OTP flow)
+  if (token_hash && type) {
+    try {
+      console.log('Auth callback - Attempting token hash verification')
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: type as any,
+      })
+      
+      if (!verifyError && data?.user) {
+        console.log('Auth callback - Token verification successful')
+        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+      } else {
+        console.error('Auth callback - Token verification failed:', verifyError?.message)
+      }
+    } catch (err) {
+      // Only catch non-redirect exceptions
+      if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+        throw err // Re-throw redirect errors
+      }
+      console.error('Auth callback - Token verification exception:', err)
+    }
+  }
 
-  return <PageLoading />
+  // Try to set session manually if we have tokens
+  if (access_token && refresh_token) {
+    try {
+      console.log('Auth callback - Attempting manual session setup')
+      const { data, error: sessionError } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      })
+      
+      if (!sessionError && data?.user) {
+        console.log('Auth callback - Manual session setup successful')
+        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+      } else {
+        console.error('Auth callback - Manual session setup failed:', sessionError?.message)
+      }
+    } catch (err) {
+      // Only catch non-redirect exceptions
+      if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+        throw err // Re-throw redirect errors
+      }
+      console.error('Auth callback - Manual session setup exception:', err)
+    }
+  }
+
+  // Check if user is already authenticated (session might be set in cookies)
+  try {
+    console.log('Auth callback - Checking existing session')
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (user && !userError) {
+      console.log('Auth callback - Existing session found, user authenticated')
+      redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+    } else {
+      console.log('Auth callback - No existing session:', userError?.message)
+    }
+  } catch (err) {
+    // Only catch non-redirect exceptions
+    if (err instanceof Error && err.message === 'NEXT_REDIRECT') {
+      throw err // Re-throw redirect errors
+    }
+    console.error('Auth callback - Session check exception:', err)
+  }
+
+  // If we get here, all authentication attempts failed
+  console.log('Auth callback - All authentication methods failed')
+  redirect('/login?error=' + encodeURIComponent('Email verification failed. Please try signing up again or contact support.'))
 }
+

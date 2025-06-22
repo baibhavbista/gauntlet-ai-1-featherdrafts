@@ -1,129 +1,78 @@
 import type { StateCreator } from 'zustand'
 import type { AppStore, AuthSlice } from '@/types/store'
-import { supabase } from '@/lib/supabase'
 import { getUserCustomDictionary, addWordToUserDictionary, removeWordFromUserDictionary } from '@/lib/database'
 
+// SIMPLIFIED AUTH SLICE - Most auth logic moved to SSR + AuthContext
+// This slice now only handles:
+// 1. Custom dictionary management (user-specific data)
+// 2. Backward compatibility for components not yet migrated
+
 export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, get) => ({
-  // State
+  // DEPRECATED STATE - kept for backward compatibility
   user: null,
-  loading: true,
+  loading: false, // Always false since SSR handles auth
   error: null,
-  isInitialized: false,
+  isInitialized: true, // Always true since SSR handles auth
+  
+  // ACTIVE STATE - still used for dictionary management
   customDictionary: [],
   isDictionaryLoaded: false,
 
-  // Actions - real implementations
+  // DEPRECATED ACTIONS - kept for backward compatibility but simplified
   initialize: async () => {
-    try {
-      console.log('[Auth] Starting initialization...')
-      
-      // Prevent multiple initializations
-      const { isInitialized } = get()
-      if (isInitialized) {
-        console.log('[Auth] Already initialized, skipping')
-        return
-      }
-
-      set({ loading: true, error: null })
-      console.log('[Auth] Set loading state')
-
-      // Get initial session
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error('[Auth] Session error:', sessionError)
-        set({ error: sessionError.message, user: null, loading: false, isInitialized: true })
-        return
-      }
-
-      console.log('[Auth] Session retrieved:', session?.user?.email || 'No user')
-
-      // Set initial user
-      set({ user: session?.user ?? null, loading: false, isInitialized: true })
-      
-      // Load custom dictionary if user is authenticated
-      if (session?.user) {
-        await get().loadCustomDictionary()
-      }
-      
-      console.log('[Auth] Initialization complete')
-
-      // Listen for auth state changes
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[Auth] State changed:', event, session?.user?.email || 'No user')
-        
-        set({ 
-          user: session?.user ?? null, 
-          loading: false,
-          error: null // Clear any previous errors on auth state change
-        })
-
-        // Handle specific auth events
-        if (event === 'SIGNED_OUT') {
-          console.log('[Auth] User signed out')
-          // Clear custom dictionary on sign out
-          set({ customDictionary: [], isDictionaryLoaded: false })
-        } else if (event === 'SIGNED_IN') {
-          console.log('[Auth] User signed in')
-          // Load custom dictionary on sign in
-          await get().loadCustomDictionary()
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('[Auth] Token refreshed')
-        }
-      })
-
-      // Store the subscription for cleanup (we'll handle this in the component)
-      // Note: In a real app, you might want to store this subscription reference
-      // for proper cleanup, but Zustand handles this differently
-
-    } catch (error) {
-      console.error('[Auth] Initialization error:', error)
-      set({ 
-        error: error instanceof Error ? error.message : 'Authentication initialization failed', 
-        loading: false, 
-        isInitialized: true 
-      })
-    }
+    console.warn('[AuthSlice] initialize() is deprecated. Auth is now handled by SSR + AuthContext.')
+    set({ loading: false, isInitialized: true })
   },
 
+  signIn: async (email: string, password: string) => {
+    console.warn('[AuthSlice] signIn() is deprecated. Use AuthContext instead.')
+    throw new Error('Auth actions moved to AuthContext')
+  },
+
+  signUp: async (email: string, password: string, fullName?: string) => {
+    console.warn('[AuthSlice] signUp() is deprecated. Use AuthContext instead.')
+    throw new Error('Auth actions moved to AuthContext')
+  },
+
+  signInWithOAuth: async (provider: 'google') => {
+    console.warn('[AuthSlice] signInWithOAuth() is deprecated. Use AuthContext instead.')
+    throw new Error('Auth actions moved to AuthContext')
+  },
+
+  signOut: async () => {
+    console.warn('[AuthSlice] signOut() is deprecated. Use AuthContext instead.')
+    throw new Error('Auth actions moved to AuthContext')
+  },
+
+  clearError: () => {
+    console.warn('[AuthSlice] clearError() is deprecated. Use AuthContext instead.')
+    set({ error: null })
+  },
+
+  // ACTIVE DICTIONARY ACTIONS - still needed for user-specific data
   loadCustomDictionary: async () => {
     try {
-      const { user } = get()
-      if (!user) {
-        console.log('[Auth] No user, skipping dictionary load')
-        return
-      }
-
-      console.log('[Auth] Loading custom dictionary...')
+      console.log('[AuthSlice] Loading custom dictionary...')
       const dictionary = await getUserCustomDictionary()
       
       set({ customDictionary: dictionary, isDictionaryLoaded: true })
-      console.log('[Auth] Custom dictionary loaded:', dictionary.length, 'words')
+      console.log('[AuthSlice] Custom dictionary loaded:', dictionary.length, 'words')
     } catch (error) {
-      console.error('[Auth] Error loading custom dictionary:', error)
+      console.error('[AuthSlice] Error loading custom dictionary:', error)
       set({ customDictionary: [], isDictionaryLoaded: false })
     }
   },
 
   addWordToDictionary: async (word: string) => {
     try {
-      const { user, customDictionary } = get()
-      if (!user) {
-        console.log('[Auth] No user, cannot add word to dictionary')
-        return false
-      }
+      const { customDictionary } = get()
 
       // Normalize word
       const normalizedWord = word.toLowerCase().trim()
       
       // Check if word already exists
       if (customDictionary.includes(normalizedWord)) {
-        console.log('[Auth] Word already in dictionary:', normalizedWord)
+        console.log('[AuthSlice] Word already in dictionary:', normalizedWord)
         return true
       }
 
@@ -137,32 +86,28 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       if (!success) {
         // Revert optimistic update on failure
         set({ customDictionary })
-        console.error('[Auth] Failed to add word to dictionary:', word)
+        console.error('[AuthSlice] Failed to add word to dictionary:', word)
         return false
       }
 
-      console.log('[Auth] Word added to dictionary:', normalizedWord)
+      console.log('[AuthSlice] Word added to dictionary:', normalizedWord)
       return true
     } catch (error) {
-      console.error('[Auth] Error adding word to dictionary:', error)
+      console.error('[AuthSlice] Error adding word to dictionary:', error)
       return false
     }
   },
 
   removeWordFromDictionary: async (word: string) => {
     try {
-      const { user, customDictionary } = get()
-      if (!user) {
-        console.log('[Auth] No user, cannot remove word from dictionary')
-        return false
-      }
+      const { customDictionary } = get()
 
       // Normalize word
       const normalizedWord = word.toLowerCase().trim()
       
       // Check if word exists
       if (!customDictionary.includes(normalizedWord)) {
-        console.log('[Auth] Word not in dictionary:', normalizedWord)
+        console.log('[AuthSlice] Word not in dictionary:', normalizedWord)
         return true
       }
 
@@ -176,148 +121,41 @@ export const createAuthSlice: StateCreator<AppStore, [], [], AuthSlice> = (set, 
       if (!success) {
         // Revert optimistic update on failure
         set({ customDictionary })
-        console.error('[Auth] Failed to remove word from dictionary:', word)
+        console.error('[AuthSlice] Failed to remove word from dictionary:', word)
         return false
       }
 
-      console.log('[Auth] Word removed from dictionary:', normalizedWord)
+      console.log('[AuthSlice] Word removed from dictionary:', normalizedWord)
       return true
     } catch (error) {
-      console.error('[Auth] Error removing word from dictionary:', error)
+      console.error('[AuthSlice] Error removing word from dictionary:', error)
       return false
     }
   },
 
   syncDictionaryToServer: async () => {
     try {
-      const { user } = get()
-      if (!user) {
-        console.log('[Auth] No user, cannot sync dictionary')
-        return
-      }
-
       // Reload dictionary from server to ensure consistency
       await get().loadCustomDictionary()
-      console.log('[Auth] Dictionary synced from server')
+      console.log('[AuthSlice] Dictionary synced from server')
     } catch (error) {
-      console.error('[Auth] Error syncing dictionary:', error)
+      console.error('[AuthSlice] Error syncing dictionary:', error)
     }
   },
 
-  signIn: async (email: string, password: string) => {
-    try {
-      set({ loading: true, error: null })
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        set({ error: error.message, loading: false })
-        throw error
-      }
-
-      // User state will be updated via the auth state change listener
-      set({ loading: false, error: null })
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign in failed'
-      set({ error: errorMessage, loading: false })
-      throw error
-    }
-  },
-
-  signUp: async (email: string, password: string, fullName?: string) => {
-    try {
-      set({ loading: true, error: null })
-
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
-      })
-
-      if (error) {
-        set({ error: error.message, loading: false })
-        throw error
-      }
-
-      // User state will be updated via the auth state change listener
-      set({ loading: false, error: null })
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign up failed'
-      set({ error: errorMessage, loading: false })
-      throw error
-    }
-  },
-
-  signInWithOAuth: async (provider: 'google') => {
-    try {
-      set({ loading: true, error: null })
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        set({ error: error.message, loading: false })
-        throw error
-      }
-
-      // OAuth will redirect, so we don't set loading to false here
-      // The redirect will handle the auth state change
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'OAuth sign in failed'
-      set({ error: errorMessage, loading: false })
-      throw error
-    }
-  },
-
-  signOut: async () => {
-    try {
-      set({ loading: true, error: null })
-
-      const { error } = await supabase.auth.signOut()
-
-      if (error) {
-        set({ error: error.message, loading: false })
-        throw error
-      }
-
-      // User state will be updated via the auth state change listener
-      set({ user: null, loading: false, error: null, customDictionary: [], isDictionaryLoaded: false })
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Sign out failed'
-      set({ error: errorMessage, loading: false })
-      throw error
-    }
-  },
-
-  clearError: () => {
-    set({ error: null })
-  },
-
-  // Internal methods - real implementations
+  // DEPRECATED INTERNAL METHODS - kept for backward compatibility
   setUser: (user) => {
+    console.warn('[AuthSlice] setUser() is deprecated. Auth state managed by AuthContext.')
     set({ user })
   },
 
   setLoading: (loading) => {
+    console.warn('[AuthSlice] setLoading() is deprecated. Auth state managed by AuthContext.')
     set({ loading })
   },
 
   setError: (error) => {
+    console.warn('[AuthSlice] setError() is deprecated. Auth state managed by AuthContext.')
     set({ error })
   },
 

@@ -8,7 +8,6 @@ import type { TweetSegment, Suggestion, SpellcheckSuggestion, GrammarSuggestion 
 import { cn } from "@/lib/utils"
 import { X, Plus, AlertCircle, BookOpen } from "lucide-react"
 import { AddToDictionaryButton } from "@/components/ui/add-to-dictionary-button"
-import { useAuth } from "@/store"
 
 type GroupedSpellingSuggestion = SpellcheckSuggestion & {
   occurrences: number

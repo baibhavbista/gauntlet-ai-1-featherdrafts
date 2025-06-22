@@ -1,11 +1,11 @@
 "use client"
 
 import { LandingPage } from "@/components/landing-page"
-import { useAuth } from "@/store"
+import { useAuthContext } from "@/components/auth/auth-context"
 import { useRouter } from "next/navigation"
 
 export default function Home() {
-  const { user } = useAuth()
+  const { user } = useAuthContext()
   const router = useRouter()
 
   // Landing page with navigation to appropriate routes

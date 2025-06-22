@@ -39,17 +39,15 @@ import {
   Type,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-import { useAuth, useThreads } from "@/store"
+import { useAuthContext } from "./auth/auth-context"
+import { useThreads } from "@/store"
+import { useRouter } from "next/navigation"
 import { ThreadFilter } from "./thread-filter"
 import { estimateTweetCount } from "@/lib/ai"
 
-interface ThreadListProps {
-  onSelectThread: (threadId: string) => void
-  onCreateNew: () => void
-}
-
-export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
-  const { user, signOut } = useAuth()
+export function ThreadList() {
+  const router = useRouter()
+  const { user, loading, isInitialized, signOut } = useAuthContext()
   const {
     // State
     threads,
@@ -88,6 +86,8 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
     if (!newThreadTitle.trim() || !user) return
     if (isAiSplitMode && !longText.trim()) return
 
+    console.log('Creating thread with title:', newThreadTitle.trim())
+
     const thread = await createThread(
       newThreadTitle.trim(), 
       undefined, // No description field anymore
@@ -101,9 +101,9 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
       setIsAiSplitMode(false)
       setLongText("")
       setTweetCount([5])
-      // Add AI success parameter when AI was used
-      const threadUrl = isAiSplitMode ? `${thread.id}?ai=success` : thread.id
-      onSelectThread(threadUrl)
+      // Add AI success parameter when AI was used and navigate
+      const threadUrl = isAiSplitMode ? `/thread/${thread.id}?ai=success` : `/thread/${thread.id}`
+      router.push(threadUrl)
     }
     // Error handling is done in the store
   }
@@ -183,6 +183,12 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
     }
   }
 
+  // Show loading while auth is initializing
+  if (loading || !isInitialized) {
+    return <PageLoading variant="branded" />
+  }
+
+  // Show auth required only after initialization is complete and user is truly not authenticated
   if (!user) {
     return (
       <div className="p-6 text-center">
@@ -402,7 +408,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
           {filteredThreads.map((thread) => (
             <Card key={thread.id} className="hover:shadow-md transition-shadow cursor-pointer"
             onClick={(e) => {
-              onSelectThread(thread.id)
+              router.push(`/thread/${thread.id}`)
             }}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -423,7 +429,7 @@ export function ThreadList({ onSelectThread, onCreateNew }: ThreadListProps) {
                       onClick={(e) => {
                         e.stopPropagation()
                     }}>
-                      <DropdownMenuItem onClick={() => onSelectThread(thread.id)}>
+                      <DropdownMenuItem onClick={() => router.push(`/thread/${thread.id}`)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>

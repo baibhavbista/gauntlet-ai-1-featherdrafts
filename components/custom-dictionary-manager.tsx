@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/store"
+import { useAuthContext } from "./auth/auth-context"
+import { useDictionary } from "@/store"
 import { BookOpen, X, Plus, Search, Trash2 } from "lucide-react"
 
 export function CustomDictionaryManager() {
-  const { customDictionary, isDictionaryLoaded, addWordToDictionary, removeWordFromDictionary } = useAuth()
+  const { user } = useAuthContext()
+  const { customDictionary, isDictionaryLoaded, addWordToDictionary, removeWordFromDictionary } = useDictionary()
   const [newWord, setNewWord] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [isAddingWord, setIsAddingWord] = useState(false)

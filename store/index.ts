@@ -131,17 +131,32 @@ export const initializeStore = async () => {
 // Auto-initialization is now handled in the component to prevent infinite loops
 // Store initialization moved to app/page.tsx useEffect
 
-// Selector hooks - use direct store access to avoid infinite loops
+// Dictionary management hook - actively supported
+export const useDictionary = () => ({
+  customDictionary: useAppStore(state => state.customDictionary),
+  isDictionaryLoaded: useAppStore(state => state.isDictionaryLoaded),
+  loadCustomDictionary: useAppStore(state => state.loadCustomDictionary),
+  addWordToDictionary: useAppStore(state => state.addWordToDictionary),
+  removeWordFromDictionary: useAppStore(state => state.removeWordFromDictionary),
+  syncDictionaryToServer: useAppStore(state => state.syncDictionaryToServer),
+})
+
+// DEPRECATED: Legacy useAuth hook for backward compatibility
+// Use the new AuthContextProvider and useAuthContext instead
+// For dictionary functions, use useDictionary() instead
 export const useAuth = () => {
-  // State selectors
+  console.warn('useAuth from store is deprecated. Use useAuthContext from components/auth/auth-context instead.')
+  
+  // For components that still use the old hook, provide minimal compatibility
+  // by returning state from the store with deprecation warnings
   const user = useAppStore(state => state.user)
-  const loading = useAppStore(state => state.loading)
+  const loading = useAppStore(state => state.loading) 
   const error = useAppStore(state => state.error)
   const isInitialized = useAppStore(state => state.isInitialized)
   const customDictionary = useAppStore(state => state.customDictionary)
   const isDictionaryLoaded = useAppStore(state => state.isDictionaryLoaded)
   
-  // Action selectors with stable references
+  // Action selectors with stable references - most are deprecated
   const initialize = useAppStore(state => state.initialize)
   const signIn = useAppStore(state => state.signIn)
   const signUp = useAppStore(state => state.signUp)

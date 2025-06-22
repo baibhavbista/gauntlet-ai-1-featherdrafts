@@ -8,15 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Mail, Lock, User, Feather } from "lucide-react"
-import { useAuth } from "@/store"
+import { useAuthContext } from "./auth-context"
+import { useRouter, useSearchParams } from "next/navigation"
+import { validateRedirectUrl } from "@/lib/utils"
 
 interface AuthFormProps {
-  onSuccess: () => void
-  onBackToHome?: () => void
   error?: string | null
 }
 
-export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormProps) {
+export function AuthForm({ error: urlError }: AuthFormProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { 
     loading: authLoading, 
     error: authError, 
@@ -24,7 +26,7 @@ export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormP
     signUp, 
     signInWithOAuth, 
     clearError 
-  } = useAuth()
+  } = useAuthContext()
   
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")
@@ -33,10 +35,15 @@ export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormP
   const [localLoading, setLocalLoading] = useState(false)
   const [message, setMessage] = useState("")
 
-  // Clear auth error when component mounts or mode changes
+  // Clear auth error when mode changes (not on every clearError reference change)
   useEffect(() => {
     clearError()
-  }, [mode, clearError])
+  }, [mode]) // Removed clearError from dependencies
+
+  // Debug: Log auth error and loading state changes
+  useEffect(() => {
+    console.log('[AuthForm] Auth state:', { authError, authLoading, localLoading })
+  }, [authError, authLoading, localLoading])
 
   const isLoading = authLoading || localLoading
 
@@ -44,7 +51,7 @@ export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormP
     e.preventDefault()
     setLocalLoading(true)
     setMessage("")
-    clearError()
+    // Don't clear error here - let the auth context handle it
 
     try {
       if (mode === "signup") {
@@ -52,14 +59,20 @@ export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormP
         setMessage("Check your email for the confirmation link!")
       } else {
         await signIn(email, password)
-        // Wait a bit for auth state to update before calling onSuccess
+        // Handle navigation after successful sign in
+        const redirectToParam = searchParams.get('redirectTo')
+        const validatedRedirectTo = validateRedirectUrl(redirectToParam)
+        const destination = validatedRedirectTo || '/threads'
+        
+        // Wait a bit for auth state to update before navigating
         setTimeout(() => {
-          onSuccess()
+          router.push(destination)
         }, 100)
       }
     } catch (error: unknown) {
-      // Error is already handled in the store
+      // Error is already handled in the auth context, just log for debugging
       console.error('Auth error:', error)
+      // Don't clear the error - let the auth context handle error display
     } finally {
       setLocalLoading(false)
     }
@@ -81,12 +94,10 @@ export function AuthForm({ onSuccess, onBackToHome, error: urlError }: AuthFormP
   }
 
   const handleBackToHome = () => {
-    if (onBackToHome) {
-      onBackToHome()
-    } else {
-      window.location.href = "/"
-    }
+    router.push("/")
   }
+
+  console.log('[AuthForm] Auth state:', { authError, authLoading, localLoading })
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">

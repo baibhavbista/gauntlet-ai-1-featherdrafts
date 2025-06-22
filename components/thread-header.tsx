@@ -14,13 +14,12 @@ import {
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 import type { Thread } from "@/types/store"
 
 interface ThreadHeaderProps {
   threadTitle: string
   currentThread: Thread | null
-  onBackToThreads?: () => void
-  onBackToLanding?: () => void
   isEditingTitle: boolean
   primaryLoadingState: boolean
   isSaving: boolean
@@ -36,8 +35,6 @@ interface ThreadHeaderProps {
 export function ThreadHeader({
   threadTitle,
   currentThread,
-  onBackToThreads,
-  onBackToLanding,
   isEditingTitle,
   primaryLoadingState,
   isSaving,
@@ -49,6 +46,7 @@ export function ThreadHeader({
   onStatusChange,
   onSetEditingTitle,
 }: ThreadHeaderProps) {
+  const router = useRouter()
   const [editingTitleValue, setEditingTitleValue] = useState("")
 
   const handleTitleSubmit = () => {
@@ -71,28 +69,18 @@ export function ThreadHeader({
   return (
     <div className="w-screen flex items-center justify-between mb-4 px-6 -ml-[50vw] left-1/2 relative pt-4 pb-4 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm top-0 z-10">
       <div className="flex items-center gap-4 flex-1">
-        {onBackToThreads && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBackToThreads}
-            className="text-gray-600 hover:text-gray-900"
-            title="Back to Threads"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        {onBackToLanding && !onBackToThreads && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBackToLanding}
-            className="text-gray-600 hover:text-gray-900"
-            title="Back to Home"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            // Go to threads if we have a thread, otherwise go home
+            router.push(currentThread ? '/threads' : '/')
+          }}
+          className="text-gray-600 hover:text-gray-900"
+          title={currentThread ? "Back to Threads" : "Back to Home"}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
 
         <div className="flex-1">
           {isEditingTitle ? (

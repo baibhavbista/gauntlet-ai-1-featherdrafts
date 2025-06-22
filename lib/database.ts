@@ -1,4 +1,4 @@
-import { supabase } from "./supabase"
+import { createClient } from "@/utils/supabase/client"
 import type { TweetSegment, Suggestion, UserPreferences } from "@/types/editor"
 
 export interface Thread {
@@ -20,6 +20,8 @@ export interface ThreadWithSegments extends Thread {
 
 // Thread operations
 export async function createThread(title: string, description?: string): Promise<Thread | null> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -51,6 +53,8 @@ export async function createThread(title: string, description?: string): Promise
 }
 
 export async function getThreads(): Promise<Thread[]> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -77,6 +81,8 @@ export async function getThreads(): Promise<Thread[]> {
 }
 
 export async function getThread(threadId: string): Promise<ThreadWithSegments | null> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -112,7 +118,7 @@ export async function getThread(threadId: string): Promise<ThreadWithSegments | 
   }
 
   // Convert database segments to our TweetSegment format
-  const formattedSegments: TweetSegment[] = segments.map((segment) => ({
+  const formattedSegments: TweetSegment[] = segments.map((segment: any) => ({
     id: segment.id,
     content: segment.content,
     charCount: segment.char_count,
@@ -126,6 +132,8 @@ export async function getThread(threadId: string): Promise<ThreadWithSegments | 
 }
 
 export async function updateThread(threadId: string, updates: Partial<Thread>): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -148,6 +156,8 @@ export async function updateThread(threadId: string, updates: Partial<Thread>): 
 }
 
 export async function deleteThread(threadId: string): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -171,6 +181,8 @@ export async function deleteThread(threadId: string): Promise<boolean> {
 
 // Segment operations
 export async function createSegment(threadId: string, content: string, index: number): Promise<TweetSegment | null> {
+  const supabase = createClient()
+  
   // Get the current user to verify thread ownership
   const {
     data: { user },
@@ -219,6 +231,8 @@ export async function createSegment(threadId: string, content: string, index: nu
 }
 
 export async function createBulkSegments(threadId: string, segments: { content: string; index: number }[]): Promise<TweetSegment[]> {
+  const supabase = createClient()
+  
   // Get the current user to verify thread ownership
   const {
     data: { user },
@@ -262,7 +276,7 @@ export async function createBulkSegments(threadId: string, segments: { content: 
   }
 
   // Convert database segments to our TweetSegment format
-  return data.map(segment => ({
+  return data.map((segment: any) => ({
     id: segment.id,
     content: segment.content,
     charCount: segment.char_count,
@@ -271,6 +285,8 @@ export async function createBulkSegments(threadId: string, segments: { content: 
 }
 
 export async function updateSegment(segmentId: string, content: string): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -300,6 +316,8 @@ export async function updateSegment(segmentId: string, content: string): Promise
 }
 
 export async function deleteSegment(segmentId: string): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -322,6 +340,8 @@ export async function deleteSegment(segmentId: string): Promise<boolean> {
 }
 
 export async function reorderSegments(threadId: string, segments: TweetSegment[]): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -371,6 +391,8 @@ export async function saveSuggestion(
   segmentId: string,
   suggestion: Omit<Suggestion, "id" | "segmentId">,
 ): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -402,6 +424,8 @@ export async function saveSuggestion(
 }
 
 export async function applySuggestion(suggestionId: string): Promise<boolean> {
+  const supabase = createClient()
+  
   // Get the current user
   const {
     data: { user },
@@ -425,6 +449,8 @@ export async function applySuggestion(suggestionId: string): Promise<boolean> {
 
 // User Preferences operations
 export async function getUserPreferences(): Promise<UserPreferences | null> {
+  const supabase = createClient()
+  
   const {
     data: { user },
     error: userError,
@@ -454,6 +480,8 @@ export async function getUserPreferences(): Promise<UserPreferences | null> {
 }
 
 export async function createDefaultUserPreferences(): Promise<UserPreferences | null> {
+  const supabase = createClient()
+  
   const {
     data: { user },
     error: userError,
@@ -482,6 +510,8 @@ export async function createDefaultUserPreferences(): Promise<UserPreferences | 
 }
 
 export async function updateUserPreferences(updates: Partial<Omit<UserPreferences, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<boolean> {
+  const supabase = createClient()
+  
   const {
     data: { user },
     error: userError,

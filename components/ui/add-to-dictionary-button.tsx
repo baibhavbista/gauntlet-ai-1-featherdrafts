@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { BookOpen, Plus } from "lucide-react"
-import { useAuth } from "@/store"
+import { useDictionary } from "@/store"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 
@@ -23,7 +23,7 @@ export function AddToDictionaryButton({
   onAddSuccess,
   onAddError,
 }: AddToDictionaryButtonProps) {
-  const { addWordToDictionary, customDictionary } = useAuth()
+  const { addWordToDictionary, customDictionary } = useDictionary()
   const [isAdding, setIsAdding] = useState(false)
 
   // Check if word is already in dictionary

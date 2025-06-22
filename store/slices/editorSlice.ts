@@ -3,6 +3,7 @@ import type { AppStore, EditorSlice } from '@/types/store'
 import type { TweetSegment, Suggestion } from '@/types/editor'
 import { checkSpelling, countCharacters, getSpellCheckStatus, preloadDictionary } from '@/utils/spellcheck'
 import { checkGrammar } from '@/utils/grammar'
+import { createClient } from '@/utils/supabase/client'
 
 // Debounce utility function
 function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T & { cancel: () => void } {
@@ -452,9 +453,14 @@ export const createEditorSlice: StateCreator<AppStore, [], [], EditorSlice> = (s
     // ====================
 
     saveImmediately: async () => {
-      const { segments, currentThread, user } = get()
+      const { segments, currentThread } = get()
       
-      if (!user) {
+      // Check authentication using Supabase client
+      const supabase = createClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user) {
+        console.error('User not authenticated for save:', error)
         set({ isSaving: false })
         return
       }

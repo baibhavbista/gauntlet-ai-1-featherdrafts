@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { AppStore, ThreadsSlice } from '@/types/store'
 import type { TweetSegment } from '@/types/editor'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/client'
 import { splitTextToThreads } from '@/lib/ai'
 import { createBulkSegments } from '@/lib/database'
 
@@ -27,15 +27,16 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
   // ====================
 
   loadThreads: async () => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return
-    }
-
     set({ isLoading: true, error: null })
 
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       const { data, error } = await supabase
         .from('threads')
         .select('*')
@@ -51,22 +52,23 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     } catch (error) {
       console.error('Failed to load threads:', error)
       set({ 
-        error: 'Failed to load threads. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to load threads. Please try again.',
         isLoading: false 
       })
     }
   },
 
   loadThread: async (threadId: string) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return null
-    }
-
     set({ isLoading: true, error: null })
 
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       // Load thread details
       const { data: thread, error: threadError } = await supabase
         .from('threads')
@@ -87,7 +89,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       if (segmentsError) throw segmentsError
 
       // Format segments
-      const formattedSegments: TweetSegment[] = (segments || []).map(segment => ({
+      const formattedSegments: TweetSegment[] = (segments || []).map((segment: any) => ({
         id: segment.id,
         content: segment.content,
         charCount: segment.char_count,
@@ -108,7 +110,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     } catch (error) {
       console.error('Failed to load thread:', error)
       set({ 
-        error: 'Failed to load thread. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to load thread. Please try again.',
         isLoading: false 
       })
       return null
@@ -116,15 +118,16 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
   },
 
   createThread: async (title: string, description?: string, longText?: string, targetTweetCount?: number) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return null
-    }
-
     set({ isCreating: true, error: null })
 
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       // First create the thread
       const { data: thread, error: threadError } = await supabase
         .from('threads')
@@ -198,7 +201,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     } catch (error) {
       console.error('Failed to create thread:', error)
       set({ 
-        error: 'Failed to create thread. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to create thread. Please try again.',
         isCreating: false 
       })
       return null
@@ -206,15 +209,16 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
   },
 
   updateThread: async (threadId: string, updates: Partial<any>) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return false
-    }
-
     set({ isUpdating: true, error: null })
 
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       const { error } = await supabase
         .from('threads')
         .update({
@@ -247,7 +251,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     } catch (error) {
       console.error('Failed to update thread:', error)
       set({ 
-        error: 'Failed to update thread. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to update thread. Please try again.',
         isUpdating: false 
       })
       return false
@@ -255,15 +259,16 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
   },
 
   deleteThread: async (threadId: string) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return false
-    }
-
     set({ isDeleting: true, error: null })
 
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       const { error } = await supabase
         .from('threads')
         .delete()
@@ -286,7 +291,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     } catch (error) {
       console.error('Failed to delete thread:', error)
       set({ 
-        error: 'Failed to delete thread. Please try again.',
+        error: error instanceof Error ? error.message : 'Failed to delete thread. Please try again.',
         isDeleting: false 
       })
       return false
@@ -298,13 +303,14 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
   // ====================
 
   createSegment: async (threadId: string, content: string, index: number) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return null
-    }
-
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       // Verify thread ownership
       const { data: thread, error: threadError } = await supabase
         .from('threads')
@@ -355,19 +361,20 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       return newSegment
     } catch (error) {
       console.error('Failed to create segment:', error)
-      set({ error: 'Failed to create segment. Please try again.' })
+      set({ error: error instanceof Error ? error.message : 'Failed to create segment. Please try again.' })
       return null
     }
   },
 
   updateSegment: async (segmentId: string, content: string) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return false
-    }
-
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       const { error } = await supabase
         .from('tweet_segments')
         .update({
@@ -399,19 +406,20 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       return true
     } catch (error) {
       console.error('Failed to update segment:', error)
-      set({ error: 'Failed to update segment. Please try again.' })
+      set({ error: error instanceof Error ? error.message : 'Failed to update segment. Please try again.' })
       return false
     }
   },
 
   deleteSegment: async (segmentId: string) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return false
-    }
-
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       const { error } = await supabase
         .from('tweet_segments')
         .delete()
@@ -437,19 +445,20 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       return true
     } catch (error) {
       console.error('Failed to delete segment:', error)
-      set({ error: 'Failed to delete segment. Please try again.' })
+      set({ error: error instanceof Error ? error.message : 'Failed to delete segment. Please try again.' })
       return false
     }
   },
 
   reorderSegments: async (threadId: string, segments: TweetSegment[]) => {
-    const { user } = get()
-    if (!user) {
-      set({ error: 'User not authenticated' })
-      return false
-    }
-
     try {
+      const supabase = createClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
+
       // Update all segments with new indices
       const updates = segments.map(segment => ({
         id: segment.id,
@@ -465,7 +474,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       )
 
       const results = await Promise.all(updatePromises)
-      const hasError = results.some(result => result.error)
+      const hasError = results.some((result: any) => result.error)
 
       if (hasError) {
         throw new Error('Some segments failed to reorder')
@@ -485,7 +494,7 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
       return true
     } catch (error) {
       console.error('Failed to reorder segments:', error)
-      set({ error: 'Failed to reorder segments. Please try again.' })
+      set({ error: error instanceof Error ? error.message : 'Failed to reorder segments. Please try again.' })
       return false
     }
   },
@@ -518,7 +527,36 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     set({ currentThread: null })
   },
 
-  // Optimistic updates helper
+  // ====================
+  // COMPUTED VALUES
+  // ====================
+
+  getFilteredThreads: () => {
+    const { threads, searchQuery, statusFilter } = get()
+    
+    let filtered = threads
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(thread => 
+        thread.title.toLowerCase().includes(query) ||
+        (thread.description && thread.description.toLowerCase().includes(query))
+      )
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(thread => thread.status === statusFilter)
+    }
+
+    return filtered
+  },
+
+  // ====================
+  // OPTIMISTIC UPDATES
+  // ====================
+
   optimisticUpdateThread: (threadId: string, updates: Partial<any>) => {
     const { threads, currentThread } = get()
     
@@ -536,20 +574,20 @@ export const createThreadsSlice: StateCreator<AppStore, [], [], ThreadsSlice> = 
     })
   },
 
-  // Get filtered threads (computed)
-  getFilteredThreads: () => {
-    const { threads, searchQuery, statusFilter } = get()
+  optimisticUpdateSegment: (segmentId: string, updates: Partial<TweetSegment>) => {
+    const { currentThread } = get()
     
-    return threads.filter(thread => {
-      // Text search filter
-      const matchesSearch = 
-        thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        thread.description?.toLowerCase().includes(searchQuery.toLowerCase())
-
-      // Status filter
-      const matchesStatus = statusFilter === 'all' || thread.status === statusFilter
-
-      return matchesSearch && matchesStatus
-    })
+    if (currentThread?.segments) {
+      const updatedSegments = currentThread.segments.map(segment =>
+        segment.id === segmentId ? { ...segment, ...updates } : segment
+      )
+      
+      set({
+        currentThread: {
+          ...currentThread,
+          segments: updatedSegments,
+        }
+      })
+    }
   },
 }) 

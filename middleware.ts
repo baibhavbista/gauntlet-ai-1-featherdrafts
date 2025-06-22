@@ -1,28 +1,9 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Skip middleware for API routes, static files, and internal Next.js routes
-  if (
-    pathname.startsWith('/api/') ||
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/favicon.ico') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next()
-  }
-
-  // Let client-side handle auth logic for most routes
-  // Middleware will be minimal to avoid conflicts
-  
-  // Debug logging in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Middleware] ${pathname} - Allowing client-side auth handling`)
-  }
-
-  return NextResponse.next()
+  // Update session using @supabase/ssr - this handles token refresh automatically
+  return await updateSession(request)
 }
 
 export const config = {
@@ -32,7 +13,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * Feel free to modify this pattern to include more paths.
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

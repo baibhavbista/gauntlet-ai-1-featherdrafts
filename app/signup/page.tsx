@@ -1,55 +1,38 @@
-"use client"
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
+import { AuthForm } from '@/components/auth/auth-form'
+import { validateRedirectUrl } from '@/lib/utils'
 
-import { useEffect, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { AuthForm } from "@/components/auth/auth-form"
-import { useAuth } from "@/store"
-import { PageLoading } from "@/components/ui/loading-spinner"
-import { validateRedirectUrl } from "@/lib/utils"
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-function SignupPageContent() {
-  const { user, isInitialized } = useAuth()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  
-  // Get and validate redirect URL
-  const redirectToParam = searchParams.get('redirectTo')
-  const validatedRedirectTo = validateRedirectUrl(redirectToParam)
-
-  // Handle redirect for authenticated users
-  useEffect(() => {
-    if (isInitialized && user) {
-      const destination = validatedRedirectTo || '/threads'
-      router.replace(destination) // Use replace to avoid adding to history
-    }
-  }, [isInitialized, user, router, validatedRedirectTo])
-
-  // Show loading while auth is initializing
-  if (!isInitialized) {
-    return <PageLoading />
-  }
-
-  // Don't render anything if user is authenticated (useEffect will handle redirect)
+  // If user is already authenticated, redirect to threads or the specified redirect URL
   if (user) {
-    return null
+    const redirectToParam = params.redirectTo as string
+    const validatedRedirectTo = validateRedirectUrl(redirectToParam)
+    const destination = validatedRedirectTo || '/threads'
+    redirect(destination)
   }
+
+  const error = params.error as string
+  const message = params.message as string
 
   return (
     <main className="min-h-screen">
       <AuthForm 
-        onSuccess={() => {
-          const destination = validatedRedirectTo || '/threads'
-          router.push(destination)
-        }}
+        error={error}
       />
+      {message && (
+        <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md shadow-lg">
+          {decodeURIComponent(message)}
+        </div>
+      )}
     </main>
-  )
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense fallback={<PageLoading />}>
-      <SignupPageContent />
-    </Suspense>
   )
 } 

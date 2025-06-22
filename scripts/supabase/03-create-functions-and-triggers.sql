@@ -7,6 +7,29 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Create function to handle new user signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Create user preferences with default values
+    INSERT INTO public.user_preferences (user_id)
+    VALUES (NEW.id);
+    
+    RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Log the error but don't fail the user creation
+        RAISE LOG 'Error creating user preferences for user %: %', NEW.id, SQLERRM;
+        RETURN NEW;
+END;
+$$ language 'plpgsql' SECURITY DEFINER;
+
+-- Create trigger for new user signup
+CREATE OR REPLACE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_new_user();
+
 -- Create triggers for updated_at columns
 CREATE TRIGGER update_threads_updated_at 
     BEFORE UPDATE ON threads 

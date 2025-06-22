@@ -16,14 +16,14 @@ import {
   LogOut,
   User,
 } from "lucide-react"
-import { useAuth } from "@/store"
+import { useAuthContext } from "./auth/auth-context"
 
 interface LandingPageProps {
   onGetStarted: () => void
 }
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
-  const { user, signOut } = useAuth()
+  const { user, signOut } = useAuthContext()
 
   const features = [
     {
