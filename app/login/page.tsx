@@ -21,11 +21,13 @@ export default async function LoginPage({
   }
 
   const error = params.error as string
+  const message = params.message as string
 
   return (
     <main className="min-h-screen">
       <AuthForm 
         error={error}
+        message={message}
       />
     </main>
   )

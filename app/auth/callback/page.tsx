@@ -7,7 +7,6 @@ export default async function AuthCallback({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const params = await searchParams
-  const next = params.next ?? params.redirect_to ?? '/threads'
   const error = params.error as string
   const code = params.code as string
   
@@ -16,6 +15,13 @@ export default async function AuthCallback({
   const type = params.type as string
   const access_token = params.access_token as string
   const refresh_token = params.refresh_token as string
+
+  // Determine redirect destination based on auth type
+  // For email verification (signup), redirect to login page
+  // For other auth flows, use provided redirect or default to threads
+  const isEmailVerification = type === 'email' || type === 'signup' || type === 'recovery'
+  const defaultRedirect = isEmailVerification ? '/login' : '/threads'
+  const next = params.next ?? params.redirect_to ?? defaultRedirect
 
   console.log('Auth callback - Environment check:', {
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -29,6 +35,8 @@ export default async function AuthCallback({
     hasAccessToken: !!access_token,
     hasRefreshToken: !!refresh_token,
     type: type,
+    isEmailVerification: isEmailVerification,
+    redirectTo: next,
     allParamKeys: Object.keys(params)
   })
 
@@ -48,7 +56,11 @@ export default async function AuthCallback({
       
       if (!exchangeError && data?.user) {
         console.log('Auth callback - Code exchange successful')
-        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+        // Add success message for email verification
+        const redirectUrl = isEmailVerification 
+          ? `/login?message=${encodeURIComponent('Email verified successfully! Please sign in to continue.')}`
+          : next
+        redirect(redirectUrl as string) // This will throw NEXT_REDIRECT - that's normal!
       } else {
         console.error('Auth callback - Code exchange failed:', exchangeError?.message)
       }
@@ -72,7 +84,11 @@ export default async function AuthCallback({
       
       if (!verifyError && data?.user) {
         console.log('Auth callback - Token verification successful')
-        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+        // Add success message for email verification
+        const redirectUrl = isEmailVerification 
+          ? `/login?message=${encodeURIComponent('Email verified successfully! Please sign in to continue.')}`
+          : next
+        redirect(redirectUrl as string) // This will throw NEXT_REDIRECT - that's normal!
       } else {
         console.error('Auth callback - Token verification failed:', verifyError?.message)
       }
@@ -96,7 +112,11 @@ export default async function AuthCallback({
       
       if (!sessionError && data?.user) {
         console.log('Auth callback - Manual session setup successful')
-        redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+        // Add success message for email verification
+        const redirectUrl = isEmailVerification 
+          ? `/login?message=${encodeURIComponent('Email verified successfully! Please sign in to continue.')}`
+          : next
+        redirect(redirectUrl as string) // This will throw NEXT_REDIRECT - that's normal!
       } else {
         console.error('Auth callback - Manual session setup failed:', sessionError?.message)
       }
@@ -116,7 +136,11 @@ export default async function AuthCallback({
     
     if (user && !userError) {
       console.log('Auth callback - Existing session found, user authenticated')
-      redirect(next as string) // This will throw NEXT_REDIRECT - that's normal!
+      // Add success message for email verification
+      const redirectUrl = isEmailVerification 
+        ? `/login?message=${encodeURIComponent('Email verified successfully! Please sign in to continue.')}`
+        : next
+      redirect(redirectUrl as string) // This will throw NEXT_REDIRECT - that's normal!
     } else {
       console.log('Auth callback - No existing session:', userError?.message)
     }

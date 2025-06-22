@@ -14,9 +14,10 @@ import { validateRedirectUrl } from "@/lib/utils"
 
 interface AuthFormProps {
   error?: string | null
+  message?: string | null
 }
 
-export function AuthForm({ error: urlError }: AuthFormProps) {
+export function AuthForm({ error: urlError, message: urlMessage }: AuthFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { 
@@ -33,12 +34,19 @@ export function AuthForm({ error: urlError }: AuthFormProps) {
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
   const [localLoading, setLocalLoading] = useState(false)
-  const [message, setMessage] = useState("")
+  const [message, setMessage] = useState(urlMessage || "")
 
   // Clear auth error when mode changes (not on every clearError reference change)
   useEffect(() => {
     clearError()
   }, [mode]) // Removed clearError from dependencies
+
+  // Set URL message if provided
+  useEffect(() => {
+    if (urlMessage) {
+      setMessage(urlMessage)
+    }
+  }, [urlMessage])
 
   // Debug: Log auth error and loading state changes
   useEffect(() => {
