@@ -331,30 +331,6 @@ function ThreadContent({
           />
         ))}
       </div>
-
-      {totalSuggestions > 0 && (
-        <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-blue-50 rounded-lg border">
-          <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-            <Wand2 className="h-4 w-4" />
-            Writing suggestions found
-          </h3>
-          <div className="flex items-center gap-4 text-sm">
-            {spellingSuggestions.length > 0 && (
-              <div className="flex items-center gap-1 text-red-600">
-                <AlertCircle className="h-3 w-3" />
-                <span>{spellingSuggestions.length} spelling</span>
-              </div>
-            )}
-            {grammarSuggestions.length > 0 && (
-              <div className="flex items-center gap-1 text-blue-600">
-                <AlertCircle className="h-3 w-3" />
-                <span>{grammarSuggestions.length} grammar</span>
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-gray-600 mt-1">Click on highlighted text above to see suggestions.</p>
-        </div>
-      )}
     </div>
   )
 }
